@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Game Show Leaderboard - Coca Cola Theme</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #fff5f5;
+}
+
+/* HEADER */
+h2, h3 {
+    text-align: center;
+    color: #D52B1E;
+    text-transform: uppercase;
+}
+
+/* TABLE BASE */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+}
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+    font-size: 15px;
+}
+th {
+    background: linear-gradient(90deg, #D52B1E, #A50000);
+    color: white;
+}
+tbody tr:nth-child(even) {
+    background-color: #ffeaea;
+}
+.highlight {
+    background-color: gold !important;
+    font-weight: bold;
+}
+.highlight-winner {
+    background: linear-gradient(90deg, gold, #ffd700);
+    font-weight: bold;
+    color: #000;
+}
+
+/* GAME SECTION BOX */
+.game-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: white;
+    border-radius: 10px;
+    border: 2px solid #D52B1E;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* INPUT STYLE */
+input {
+    width: 70px;
+    text-align: center;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+/* BUTTONS */
+.update-btn, .reset-btn {
+    padding: 8px 15px;
+    background: #D52B1E;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    margin: 5px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+.update-btn:hover, .reset-btn:hover {
+    background: #b72015;
+    transform: scale(1.05);
+}
+.btn-container {
+    text-align: center;
+    margin-top: 10px;
+}
+
+/* SUMMARY FONT SIZE */
+#summaryWins {
+    font-size: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+#summaryWins th {
+    font-size: 22px;
+}
+</style>
+</head>
+<body>
+
+<!-- SUMMARY TABLE -->
+<h2>🏆 Mini-Game Wins Summary 🏆</h2>
+<table id="summaryWins">
+<thead>
+    <tr>
+        <th>Team</th>
+        <th>Mini-Games Won</th>
+    </tr>
+</thead>
+<tbody>
+    <tr><td>Team 1</td><td>0</td></tr>
+    <tr><td>Team 2</td><td>0</td></tr>
+    <tr><td>Team 3</td><td>0</td></tr>
+    <tr><td>Team 4</td><td>0</td></tr>
+    <tr><td>Team 5</td><td>0</td></tr>
+</tbody>
+</table>
+
+<div class="btn-container">
+    <button class="reset-btn" onclick="resetAllGames()">Reset ALL Games</button>
+</div>
+
+<!-- SUB-GAME 1: AUCTION -->
+<div class="game-section">
+<h3>🎯 Sub-game 1: Auction</h3>
+<table id="auctionGame">
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Points</th>
+            <th>Team 1 Bid</th>
+            <th>Team 2 Bid</th>
+            <th>Team 3 Bid</th>
+            <th>Team 4 Bid</th>
+            <th>Team 5 Bid</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+    <tfoot>
+        <tr><th colspan="2">Money Left</th><th id="money1">$1000</th><th id="money2">$1000</th><th id="money3">$1000</th><th id="money4">$1000</th><th id="money5">$1000</th></tr>
+        <tr><th colspan="2">Total Points</th><th id="points1">0</th><th id="points2">0</th><th id="points3">0</th><th id="points4">0</th><th id="points5">0</th></tr>
+    </tfoot>
+</table>
+<div class="btn-container">
+    <button class="update-btn" onclick="updateAuction()">Update Auction</button>
+    <button class="reset-btn" onclick="resetGame('auctionGame','sub1')">Reset Auction</button>
+</div>
+</div>
+
+<!-- SUB-GAME 2 -->
+<div class="game-section">
+<h3>💬 Sub-game 2: Company Feud</h3>
+<table id="game2">
+<thead><tr><th>Round</th><th>Team 1</th><th>Team 2</th><th>Team 3</th><th>Team 4</th><th>Team 5</th></tr></thead>
+<tbody>
+    <tr><td>Round 1</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 2</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 3</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 4</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+</tbody>
+</table>
+<div class="btn-container">
+    <button class="update-btn" onclick="updateSubgame('game2','sub2')">Update Company Feud</button>
+    <button class="reset-btn" onclick="resetGame('game2','sub2')">Reset Company Feud</button>
+</div>
+</div>
+
+<!-- SUB-GAME 3 -->
+<div class="game-section">
+<h3>🔥 Sub-game 3: Hot Seat</h3>
+<table id="game3">
+<thead><tr><th>Round</th><th>Team 1</th><th>Team 2</th><th>Team 3</th><th>Team 4</th><th>Team 5</th></tr></thead>
+<tbody>
+    <tr><td>Round 1</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 2</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 3</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 4</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 5</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+</tbody>
+</table>
+<div class="btn-container">
+    <button class="update-btn" onclick="updateSubgame('game3','sub3')">Update Hot Seat</button>
+    <button class="reset-btn" onclick="resetGame('game3','sub3')">Reset Hot Seat</button>
+</div>
+</div>
+
+<!-- SUB-GAME 4 -->
+<div class="game-section">
+<h3>🕵 Sub-game 4: Time Hop Trivia</h3>
+<table id="game4">
+<thead><tr><th>Round</th><th>Team 1</th><th>Team 2</th><th>Team 3</th><th>Team 4</th><th>Team 5</th></tr></thead>
+<tbody>
+    <tr><td>Round 1</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 2</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 3</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+    <tr><td>Round 4</td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td><td><input type="number" value="0"></td></tr>
+</tbody>
+</table>
+<div class="btn-container">
+    <button class="update-btn" onclick="updateSubgame('game4','sub4')">Update Time Hop Trivia</button>
+    <button class="reset-btn" onclick="resetGame('game4','sub4')">Reset Time Hop Trivia</button>
+</div>
+</div>
+
+<script>
+const itemPoints = [15, -8, 10, -12, 9, 14, 18, -10];
+const auctionBody = document.querySelector("#auctionGame tbody");
+
+// Build auction rows dynamically
+itemPoints.forEach((pts, idx) => {
+    let row = document.createElement("tr");
+    row.innerHTML = `<td>Item ${idx+1}</td>
+                     <td>${pts}</td>
+                     <td><input type="number" value="0"></td>
+                     <td><input type="number" value="0"></td>
+                     <td><input type="number" value="0"></td>
+                     <td><input type="number" value="0"></td>
+                     <td><input type="number" value="0"></td>`;
+    auctionBody.appendChild(row);
+});
+
+let winsPerGame = {
+    sub1: [0,0,0,0,0],
+    sub2: [0,0,0,0,0],
+    sub3: [0,0,0,0,0],
+    sub4: [0,0,0,0,0]
+};
+
+function updateAuction() {
+    let money = [1000, 1000, 1000, 1000, 1000];
+    let points = [0, 0, 0, 0, 0];
+    const rows = auctionBody.querySelectorAll("tr");
+
+    rows.forEach((row, i) => {
+        const bids = Array.from(row.querySelectorAll("input")).map(inp => parseInt(inp.value) || 0);
+        let maxBid = Math.max(...bids);
+        if (maxBid > 0) {
+            let winnerIndex = bids.indexOf(maxBid);
+            money[winnerIndex] -= maxBid;
+            points[winnerIndex] += itemPoints[i];
+        }
+    });
+
+    for (let i = 0; i < 5; i++) {
+        document.getElementById(`money${i+1}`).textContent = `$${money[i]}`;
+        document.getElementById(`points${i+1}`).textContent = points[i];
+    }
+
+    let maxPoints = Math.max(...points);
+    winsPerGame.sub1 = points.map(p => p === maxPoints ? 1 : 0);
+    updateSummaryWins();
+}
+
+function updateSubgame(tableId, subgameKey) {
+    const table = document.getElementById(tableId);
+    const rows = Array.from(table.querySelectorAll("tbody tr"));
+    let totals = [0,0,0,0,0];
+
+    rows.forEach(row => {
+        for (let col = 1; col <= 5; col++) {
+            totals[col-1] += parseInt(row.cells[col].querySelector("input").value) || 0;
+        }
+    });
+
+    let maxScore = Math.max(...totals);
+    winsPerGame[subgameKey] = totals.map(score => score === maxScore ? 1 : 0);
+    updateSummaryWins();
+}
+
+function resetGame(tableId, subgameKey) {
+    const table = document.getElementById(tableId);
+    const inputs = table.querySelectorAll("input");
+    inputs.forEach(input => input.value = 0);
+    winsPerGame[subgameKey] = [0,0,0,0,0];
+    if (tableId === 'auctionGame') {
+        for (let i = 0; i < 5; i++) {
+            document.getElementById(`money${i+1}`).textContent = "$1000";
+            document.getElementById(`points${i+1}`).textContent = "0";
+        }
+    }
+    updateSummaryWins();
+}
+
+function resetAllGames() {
+    resetGame('auctionGame','sub1');
+    resetGame('game2','sub2');
+    resetGame('game3','sub3');
+    resetGame('game4','sub4');
+}
+
+function updateSummaryWins() {
+    const summaryRows = document.querySelectorAll("#summaryWins tbody tr");
+    let totalWinsPerTeam = [];
+    for (let i = 0; i < 5; i++) {
+        let totalWins = 0;
+        for (let game in winsPerGame) {
+            totalWins += winsPerGame[game][i];
+        }
+        totalWinsPerTeam[i] = totalWins;
+        summaryRows[i].children[1].textContent = totalWins;
+        summaryRows[i].classList.remove('highlight-winner');
+    }
+    let highestWins = Math.max(...totalWinsPerTeam);
+    totalWinsPerTeam.forEach((wins, idx) => {
+        if (wins === highestWins && highestWins > 0) {
+            summaryRows[idx].classList.add('highlight-winner');
+        }
+    });
+}
+</script>
+</body>
+</html>
