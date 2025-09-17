@@ -1,0 +1,115 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hot Seat - Participant</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Shared CSS -->
+<link rel="stylesheet" href="gameshow.css">
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🔥 Hot Seat
+</header>
+
+<div class="container">
+    <!-- Team selector -->
+    <div class="team-select-row">
+        <label for="teamSelect">Select Your Team:</label>
+        <select id="teamSelect">
+            <option value="Team 1">Team 1</option>
+            <option value="Team 2">Team 2</option>
+            <option value="Team 3">Team 3</option>
+            <option value="Team 4">Team 4</option>
+            <option value="Team 5">Team 5</option>
+        </select>
+    </div>
+
+    <!-- Round info -->
+    <h3>Round: <span id="roundNum">1</span></h3>
+    <p id="statusMsg">Waiting for round to start...</p>
+
+    <!-- Centered Big Buzzer -->
+    <button id="buzzBtn" onclick="buzz()">🚨 BUZZ!</button>
+</div>
+
+<div class="container">
+    <h3>📊 Leaderboard</h3>
+    <table>
+        <thead>
+            <tr><th>Team</th><th>Score</th></tr>
+        </thead>
+        <tbody id="scoreTable"></tbody>
+    </table>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const firebaseConfig = {
+        apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+        authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+        databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "apacgameshow-f8d5d",
+        storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+        messagingSenderId: "572761881903",
+        appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let teamName = document.getElementById("teamSelect").value;
+
+    document.getElementById("teamSelect").addEventListener("change", e => {
+        teamName = e.target.value;
+    });
+
+    // Round number
+    db.ref("hotSeat/currentRound").on("value", snap => {
+        document.getElementById("roundNum").innerText = snap.val() || 1;
+    });
+
+    // Enable/disable BUZZ button
+    db.ref("hotSeat/roundActive").on("value", snap => {
+        const active = snap.val();
+        document.getElementById("buzzBtn").disabled = !active;
+        document.getElementById("statusMsg").innerText = active ?
+            "Round active! BUZZ to answer!" : "Waiting for round to start...";
+    });
+
+    // Buzz function
+    window.buzz = function() {
+        const orderRef = db.ref("hotSeat/buzzOrder");
+        orderRef.once("value").then(snap => {
+            let order = snap.val() || [];
+            if (!order.includes(teamName)) {
+                order.push(teamName);
+                orderRef.set(order);
+            }
+        });
+    };
+
+    // Live leaderboard
+    db.ref("teams").on("value", snap => {
+        const teams = snap.val() || {};
+        const tbody = document.getElementById("scoreTable");
+        tbody.innerHTML = "";
+        const sortedTeams = Object.keys(teams).sort((a, b) => (teams[b].score || 0) - (teams[a].score || 0));
+        sortedTeams.forEach(team => {
+            tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
+        });
+    });
+});
+</script>
+
+</body>
+</html>

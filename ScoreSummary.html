@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Game Show Wins Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+  font-family: 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #ffcccc, #ffe6e6);
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+}
+header {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 2.2em;
+  background: #d52b1e;
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  position: relative; /* for back button positioning */
+}
+.back-btn {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.back-btn svg {
+  width: 32px;
+  height: 32px;
+  stroke: white;
+  stroke-width: 3.5;
+  transition: transform 0.2s ease;
+}
+.back-btn:hover svg {
+  transform: translateX(-3px);
+}
+.container {
+  max-width: 500px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+th, td {
+  padding: 12px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+th {
+  background: #d52b1e;
+  color: white;
+}
+.highlight {
+  background: linear-gradient(90deg, gold, #ffd700);
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <!-- Back button to go to index.html -->
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🏆 Mini‑Game Wins Summary 🏆
+</header>
+
+<div class="container">
+  <table id="summaryWins">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Mini‑Games Won</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Team 1</td><td>0</td></tr>
+      <tr><td>Team 2</td><td>0</td></tr>
+      <tr><td>Team 3</td><td>0</td></tr>
+      <tr><td>Team 4</td><td>0</td></tr>
+      <tr><td>Team 5</td><td>0</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Listen for changes in wins node
+db.ref("wins").on("value", snap => {
+    const winsData = snap.val() || {};
+    const tbody = document.querySelector("#summaryWins tbody");
+    tbody.innerHTML = "";
+
+    // Determine highest wins to highlight leaders
+    let highest = Math.max(...Object.values(winsData));
+
+    Object.keys(winsData).forEach(team => {
+        const row = document.createElement("tr");
+        if (winsData[team] === highest && highest > 0) {
+            row.classList.add("highlight");
+        }
+        row.innerHTML = `<td>${team}</td><td>${winsData[team]}</td>`;
+        tbody.appendChild(row);
+    });
+});
+</script>
+
+</body>
+</html>
