@@ -11,37 +11,9 @@
 <link rel="stylesheet" href="gameshow.css">
 
 <style>
-/* Additional Host Control Panel Specific Styles */
+/* Host page-specific styles only (no overriding menu-button!) */
 .container {
     animation: fadeIn 0.8s ease-in-out;
-}
-
-.menu-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-    margin-top: 20px;
-}
-
-.menu-button {
-    display: inline-block;
-    min-width: 350px;
-    padding: 15px 25px;
-    background-color: #d52b1e;
-    color: white;
-    text-decoration: none;
-    font-size: 1.3em;
-    border-radius: 10px;
-    font-weight: bold;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    transition: 0.3s;
-    text-align: center;
-}
-
-.menu-button:hover {
-    background-color: #ff3b2e;
-    transform: scale(1.05);
 }
 
 input[type="password"] {
@@ -73,16 +45,6 @@ button {
 
 button:hover {
     background: #ff3b2e;
-    transform: scale(1.05);
-}
-
-.special-button {
-    background-color: #444;
-    color: gold;
-}
-
-.special-button:hover {
-    background-color: #222;
     transform: scale(1.05);
 }
 </style>
@@ -118,7 +80,7 @@ button:hover {
         <a href="host-hot-seat.html" class="menu-button">🔥 Host Hot Seat</a>
         <a href="host-time-hop.html" class="menu-button">🕵 Host Time Hop Trivia</a>
         <a href="ScoreSummary.html" class="menu-button">📊 View Scoreboard</a>
-        <a href="index.html" class="menu-button special-button">⬅ Go Back to Main Menu</a>
+        <a href="index.html" class="menu-button host-button">⬅ Go Back to Main Menu</a>
     </div>
 </div>
 

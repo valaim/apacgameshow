@@ -1,26 +1,30 @@
-﻿/* gameshow.css - Standardized for all game pages */
+﻿/* gameshow.css - Gamified Upgrade v4 */
 @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap');
 
 /* ================= Base Styling ================= */
 body {
   font-family: 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #ffcccc, #ffe6e6);
+  background: radial-gradient(circle at center, #ff4b2e, #8b0000 70%);
   margin: 0;
   padding: 20px;
   text-align: center;
+  color: #222;
+  overflow-x: hidden;
 }
 
 /* ================= Header & Back Button ================= */
 header {
-  font-family: 'Luckiest Guy', cursive; /* ✅ Font name fixed */
-  font-size: 2.2em;
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 2.8em;
   background: #d52b1e;
-  color: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
+  color: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 25px;
   position: relative;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.8), 0 0 30px rgba(255, 150, 150, 0.6);
+  text-shadow: 2px 2px 6px rgba(0,0,0,0.4), 0 0 10px gold;
+  letter-spacing: 2px;
 }
 
 .back-btn {
@@ -40,6 +44,7 @@ header {
   stroke: white;
   stroke-width: 3.5;
   transition: transform 0.2s ease;
+  filter: drop-shadow(0 0 4px gold);
 }
 
 .back-btn:hover svg {
@@ -48,18 +53,22 @@ header {
 
 /* ================= Containers ================= */
 .container {
-  max-width: 800px;
+  max-width: 850px;
   margin: 20px auto;
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-  text-align: center; /* ✅ Ensures button & inline items center */
+  background: rgba(255, 255, 255, 0.95);
+  padding: 25px;
+  border-radius: 18px;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), 0 0 40px rgba(255, 100, 100, 0.4);
+  text-align: center;
+  animation: fadeIn 0.8s ease;
 }
 
 .container h2,
 .container h3 {
   margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(255,0,0,0.6);
 }
 
 /* ================= Tables ================= */
@@ -67,17 +76,24 @@ table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 15px;
+  border: 3px solid #d52b1e;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(255,0,0,0.5);
 }
 
 th, td {
-  padding: 12px;
+  padding: 14px;
   border: 1px solid #ccc;
   text-align: center;
+  font-weight: bold;
 }
 
 th {
-  background: #d52b1e;
+  background: linear-gradient(90deg, #d52b1e, #a30000);
   color: white;
+  text-shadow: 1px 1px 4px black;
+  letter-spacing: 1px;
 }
 
 tr:nth-child(even) {
@@ -91,26 +107,31 @@ tr:hover {
 
 /* ================= Buttons ================= */
 button {
-  padding: 10px 20px;
-  font-size: 1.1em;
-  background: #d52b1e;
+  padding: 12px 25px;
+  font-size: 1.2em;
+  background: linear-gradient(180deg, #ff3b2e, #a30000);
   color: white;
   border: none;
-  border-radius: 8px;
-  margin: 5px;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  margin: 8px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4), 0 0 10px rgba(255,0,0,0.8);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s;
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
 button:hover {
-  background: #ff3b2e;
-  transform: scale(1.05);
+  background: linear-gradient(180deg, #ff5555, #cc0000);
+  transform: scale(1.08);
+  box-shadow: 0 0 15px rgba(255,100,100,1), 0 0 30px rgba(255,50,50,0.8);
 }
 
 button:disabled {
   background: grey;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 /* Special Buttons */
@@ -135,8 +156,14 @@ input, select {
   border-radius: 8px;
   outline: none;
   margin: 5px;
-  height: 42px; /* Matches button height */
+  height: 42px;
   min-width: 150px;
+  box-shadow: inset 0 0 5px rgba(255,0,0,0.4);
+}
+
+input:focus, select:focus {
+  border-color: gold;
+  box-shadow: 0 0 8px gold, inset 0 0 5px rgba(255,0,0,0.4);
 }
 
 /* ================= Form Layouts ================= */
@@ -152,6 +179,8 @@ input, select {
 .status {
   font-size: 1.1em;
   margin: 6px 0;
+  font-weight: bold;
+  text-shadow: 0 0 4px rgba(255,0,0,0.6);
 }
 
 /* ================= Team Selector Row ================= */
@@ -159,41 +188,50 @@ input, select {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px; /* spacing between label and select */
+  gap: 10px;
   margin-bottom: 15px;
 }
 
 .team-select-row label {
   font-size: 1.2em;
   font-weight: bold;
+  color: #a30000;
+  text-shadow: 0 0 6px rgba(255,0,0,0.4);
 }
 
 /* ================= Highlight Styles for Scoreboards ================= */
 .highlight {
   background: linear-gradient(90deg, gold, #ffd700);
   font-weight: bold;
+  animation: blinkHighlight 1s infinite alternate;
+}
+
+@keyframes blinkHighlight {
+  from { background: gold; }
+  to { background: #ffec8b; }
 }
 
 /* ================= Game Show Buzzer (Hot Seat) ================= */
 #buzzBtn {
-  display: inline-flex; /* ✅ Works with text-align center to center horizontally */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin: 20px auto; /* ✅ Extra safety centering if block */
+  margin: 20px auto;
   background: radial-gradient(circle at 30% 30%, #ff4b4b, #c20000);
   color: white;
   font-size: 2em;
   font-weight: bold;
   border: none;
   border-radius: 50%;
-  width: 160px;
-  height: 160px;
+  width: 170px;
+  height: 170px;
   cursor: pointer;
-  box-shadow: 0 8px #700000, 0 12px 25px rgba(0,0,0,0.4);
+  box-shadow: 0 8px #700000, 0 12px 25px rgba(0,0,0,0.6);
   transition: all 0.1s ease-in-out;
   user-select: none;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.6);
   position: relative;
+  animation: pulseGlow 1.2s infinite, shakeBuzz 3s infinite;
 }
 
 /* Glossy shine */
@@ -212,7 +250,7 @@ input, select {
 /* Press effect */
 #buzzBtn:active {
   transform: translateY(4px);
-  box-shadow: 0 4px #700000, 0 6px 12px rgba(0,0,0,0.4);
+  box-shadow: 0 4px #700000, 0 6px 12px rgba(0,0,0,0.5);
 }
 
 /* Disabled look */
@@ -220,6 +258,7 @@ input, select {
   background: radial-gradient(circle at 30% 30%, #bbbbbb, #777777);
   box-shadow: 0 4px #555;
   cursor: not-allowed;
+  animation: none;
 }
 
 /* Pulse glow animation */
@@ -229,6 +268,58 @@ input, select {
   100% { box-shadow: 0 8px #700000, 0 12px 25px rgba(255,0,0,0.4); }
 }
 
-#buzzBtn:not(:disabled) {
-  animation: pulseGlow 1.5s infinite;
+/* Shake animation */
+@keyframes shakeBuzz {
+  0%, 90%, 100% { transform: translateY(0); }
+  92% { transform: translateX(-4px) rotate(-2deg); }
+  94% { transform: translateX(4px) rotate(2deg); }
+  96% { transform: translateX(-3px) rotate(-1deg); }
+  98% { transform: translateX(3px) rotate(1deg); }
+}
+
+/* ================= Animations ================= */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* ================= Main Menu Button Styling (Global) ================= */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.menu-button {
+  display: inline-block;
+  width: 320px; /* Fixed consistent width for all pages */
+  padding: 15px 25px;
+  background: linear-gradient(180deg, #ff3b2e, #a30000);
+  color: white;
+  text-decoration: none;
+  font-size: 1.3em;
+  border-radius: 12px;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4), 0 0 10px rgba(255,0,0,0.8);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.25s;
+}
+
+.menu-button:hover {
+  background: linear-gradient(180deg, #ff5555, #cc0000);
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(255,100,100,1), 0 0 30px rgba(255,50,50,0.8);
+}
+
+.host-button {
+  background: #444;
+  color: gold;
+}
+
+.host-button:hover {
+  background: #222;
 }
