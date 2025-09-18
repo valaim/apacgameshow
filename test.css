@@ -1,0 +1,113 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap');
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background: radial-gradient(circle at center, #ffeecc, #cc9900 70%);
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  color: #222;
+  overflow-x: hidden;
+}
+
+header {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 2.4em;
+  color: #fff;
+  padding: 20px 60px;
+  border-radius: 50px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  position: relative;
+  background: linear-gradient(180deg, #ffbb33, #cc8800);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5),
+              0 0 20px rgba(255, 180, 60, 0.8),
+              inset 0 0 10px rgba(255,255,255,0.15);
+  letter-spacing: 2px;
+}
+
+/* Back Button */
+.back-btn {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(180deg, #ff3b2e, #a30000);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4),
+              0 0 5px rgba(255,0,0,0.6);
+}
+
+.back-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.back-btn svg path {
+  stroke: #FFD84D;
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 2px rgba(255,215,0,0.9));
+}
+
+/* Warning banner */
+.warning-banner {
+  background: #ffcc00;
+  color: black;
+  font-weight: bold;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* Container */
+.container {
+  max-width: 850px;
+  margin: 20px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.3);
+}
+
+/* Menu buttons */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.menu-button {
+  display: inline-block;
+  width: 320px;
+  padding: 12px 20px;
+  background: linear-gradient(180deg, #ffbb33, #cc8800);
+  color: white;
+  text-decoration: none;
+  font-size: 1.2em;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  cursor: pointer;
+}
+
+.menu-button:hover {
+  background: linear-gradient(180deg, #ffcc55, #cc9900);
+}
