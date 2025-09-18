@@ -1,57 +1,24 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Game Show - Test Zone</title>
-
-<!-- Google Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Test CSS -->
-<link rel="stylesheet" href="test.css">
-
-<script>
-function simulateFeature(featureName) {
-    const msgBox = document.getElementById("testOutput");
-    msgBox.innerHTML = `✅ <strong>${featureName}</strong> button clicked! Feature is working.`;
-    msgBox.style.display = "block";
-}
-</script>
-
+    <meta charset="UTF-8">
+    <title>Gameshow Main Menu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="gameshow.css">
 </head>
 <body>
 
-<header>
-  <button class="back-btn" onclick="alert('🔙 Back button works!')" title="Back">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M15 18l-6-6 6-6"/>
-      <path d="M9 12h12"/>
-    </svg>
-  </button>
-  🧪 Test Zone
-</header>
-
-<div class="warning-banner">
-  ⚠ This is a <strong>Test Page</strong> — all actions here are demonstrations only.<br>
-  No real games are running.
-</div>
+<header>🎮 Welcome to the Gameshow!</header>
 
 <div class="container">
-  <h2>Test the Buttons</h2>
-  <p>Click any button to simulate its functionality.</p>
-
-  <div class="menu-container">
-    <button onclick="simulateFeature('Game 1')" class="menu-button">🎯 Game 1</button>
-    <button onclick="simulateFeature('Game 2')" class="menu-button">💬 Game 2</button>
-    <button onclick="simulateFeature('Game 3')" class="menu-button">🔥 Game 3</button>
-    <button onclick="simulateFeature('Game 4')" class="menu-button">🕵 Game 4</button>
-    <button onclick="simulateFeature('Scoreboard')" class="menu-button">📊 Scoreboard</button>
-  </div>
-
-  <!-- Message output -->
-  <div id="testOutput" style="display:none; margin-top:20px; padding:15px; background:#e0ffe0; border:2px solid green; border-radius:8px; font-size:1.1em;">
-  </div>
-
+    <div class="menu-container">
+        <a href="auction.html" class="menu-button">🎯 Sub-game 1: Auction</a>
+        <a href="company-feud.html" class="menu-button">💬 Sub-game 2: Company Feud</a>
+        <a href="hot-seat.html" class="menu-button">🔥 Sub-game 3: Hot Seat</a>
+        <a href="time-hop.html" class="menu-button">🕵 Sub-game 4: Time Hop Trivia</a>
+        <a href="ScoreSummary.html" class="menu-button">📊 View Scoreboard</a>
+        <a href="host-menu.html" class="menu-button host-button">🛠 Host Control Panel</a>
+    </div>
 </div>
 
 </body>
