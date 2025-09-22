@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="gameshow.css">
   
   <style>
-    /* Page-specific extras that are unique only for this page */
+    /* Page-specific extras */
     .reset-btn { background-color: darkred; }
     .reset-btn:hover { background-color: red; }
     @keyframes fadeIn {
@@ -37,6 +37,7 @@
 
 <div class="container">
   <h2>Current Round: <span id="roundNum">1</span></h2>
+  
   <table>
     <thead>
       <tr>
@@ -55,9 +56,25 @@
     </tbody>
   </table>
 
+  <!-- Winner Control -->
+  <div class="winner-control">
+    <label for="winnerSelect">Declare Mini‑Game Winner:</label>
+    <select id="winnerSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+    <button onclick="declareWinner()">✅ Set Winner</button>
+  </div>
+
   <button onclick="endRound()">🏁 End Round</button><br><br>
+  
   <input type="number" id="pointsInput" placeholder="Enter item points">
   <button onclick="applyPoints()">🎁 Apply Item Points</button><br><br>
+  
   <button onclick="resetGame()" class="reset-btn">♻ Reset Game</button>
 </div>
 
@@ -83,6 +100,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+// ---- Real-time updates ----
 db.ref("auction/bids").on("value", snap => {
   const bids = snap.val() || {};
   Object.keys(bids).forEach(team => {
@@ -102,6 +120,26 @@ db.ref("auction/currentRound").on("value", snap => {
   document.getElementById("roundNum").innerText = snap.val();
 });
 
+// ---- Declare Winner ----
+function declareWinner() {
+  const winner = document.getElementById('winnerSelect').value;
+
+  if (!winner) {
+    alert("Please select a team to declare as winner!");
+    return;
+  }
+
+  const winsRef = db.ref('wins/' + winner);
+  winsRef.transaction(currentWins => (currentWins || 0) + 1)
+    .then(() => {
+      alert(`${winner} wins this mini-game! 🏆`);
+    })
+    .catch(error => {
+      console.error("Error updating winner:", error);
+    });
+}
+
+// ---- Host Functions ----
 function endRound() {
   db.ref("auction/bids").once("value").then(snap => {
     const bids = snap.val() || {};

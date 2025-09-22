@@ -1,4 +1,4 @@
-﻿/* gameshow.css - Gamified Upgrade v8 */
+﻿/* gameshow.css - Gamified Upgrade v11 (FINAL FIXED) */
 @import url('https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap');
 
 /* ================= Base Styling ================= */
@@ -12,7 +12,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ================= Header & Back Button - Sleek Red Glow ================= */
+/* ================= Header ================= */
 header {
   font-family: 'Luckiest Guy', cursive;
   font-size: 2.4em;
@@ -55,8 +55,7 @@ header::before {
   100% { left: 125%; }
 }
 
-/* ================= Back Button - Text Version ================= */
-/* ================= Back Button - Small Circular Arrow ================= */
+/* ================= Back Button ================= */
 .back-btn {
   position: absolute;
   left: 15px;
@@ -65,7 +64,7 @@ header::before {
   background: linear-gradient(180deg, #ff3b2e, #a30000);
   border: none;
   border-radius: 50%;
-  width: 28px;   /* small circle */
+  width: 28px;
   height: 28px;
   display: flex;
   align-items: center;
@@ -83,14 +82,13 @@ header::before {
   transform: translateY(-50%) scale(1.1);
 }
 
-/* Arrow icon inside back button */
 .back-btn svg {
-  width: 14px; /* arrow size */
+  width: 14px;
   height: 14px;
 }
 
 .back-btn svg path {
-  stroke: #FFD84D; /* gold arrow */
+  stroke: #FFD84D;
   fill: none;
   stroke-width: 2.5;
   stroke-linecap: round;
@@ -106,8 +104,8 @@ header::before {
   padding: 25px;
   border-radius: 18px;
   box-shadow: 0 0 20px rgba(255, 0, 0, 0.5), 0 0 40px rgba(255, 100, 100, 0.4);
-  text-align: center;
   animation: fadeIn 0.8s ease;
+  text-align: center;
 }
 
 .container h2,
@@ -140,17 +138,10 @@ th {
   background: linear-gradient(90deg, #d52b1e, #a30000);
   color: white;
   text-shadow: 1px 1px 4px black;
-  letter-spacing: 1px;
 }
 
-tr:nth-child(even) {
-  background-color: #fff5f5;
-}
-
-tr:hover {
-  background-color: #ffe0e0;
-  transition: background 0.3s;
-}
+tr:nth-child(even) { background-color: #fff5f5; }
+tr:hover { background-color: #ffe0e0; }
 
 /* ================= Buttons ================= */
 button {
@@ -164,87 +155,22 @@ button {
   box-shadow: 0 4px 10px rgba(0,0,0,0.4), 0 0 10px rgba(255,0,0,0.8);
   cursor: pointer;
   transition: all 0.25s;
-  text-transform: uppercase;
   font-weight: bold;
   letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 button:hover {
   background: linear-gradient(180deg, #ff5555, #cc0000);
   transform: scale(1.08);
-  box-shadow: 0 0 15px rgba(255,100,100,1), 0 0 30px rgba(255,50,50,0.8);
 }
 
 button:disabled {
   background: grey;
   cursor: not-allowed;
-  box-shadow: none;
 }
 
-/* ================= Inputs & Select ================= */
-input, select {
-  padding: 10px;
-  font-size: 1em;
-  border: 2px solid #d52b1e;
-  border-radius: 8px;
-  outline: none;
-  margin: 5px;
-  height: 42px;
-  min-width: 150px;
-  box-shadow: inset 0 0 5px rgba(255,0,0,0.4);
-}
-
-input:focus, select:focus {
-  border-color: gold;
-  box-shadow: 0 0 8px gold, inset 0 0 5px rgba(255,0,0,0.4);
-}
-
-/* ================= Form Layouts ================= */
-.form-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 15px;
-}
-
-.status {
-  font-size: 1.1em;
-  margin: 6px 0;
-  font-weight: bold;
-  text-shadow: 0 0 4px rgba(255,0,0,0.6);
-}
-
-/* ================= Team Selector Row ================= */
-.team-select-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-.team-select-row label {
-  font-size: 1.2em;
-  font-weight: bold;
-  color: #a30000;
-  text-shadow: 0 0 6px rgba(255,0,0,0.4);
-}
-
-/* ================= Highlight Styles for Scoreboards ================= */
-.highlight {
-  background: linear-gradient(90deg, gold, #ffd700);
-  font-weight: bold;
-  animation: blinkHighlight 1s infinite alternate;
-}
-
-@keyframes blinkHighlight {
-  from { background: gold; }
-  to { background: #ffec8b; }
-}
-
-/* ================= Game Show Buzzer (Hot Seat) ================= */
+/* ================= Circular BUZZ button ================= */
 #buzzBtn {
   display: inline-flex;
   align-items: center;
@@ -305,7 +231,129 @@ input:focus, select:focus {
   98% { transform: translateX(3px) rotate(1deg); }
 }
 
-/* ================= Main Menu Button Styling (Global) ================= */
+/* ================= Inputs ================= */
+input, select {
+  padding: 10px;
+  font-size: 1em;
+  border: 2px solid #d52b1e;
+  border-radius: 8px;
+  margin: 5px;
+  height: 42px;
+  min-width: 150px;
+  box-shadow: inset 0 0 5px rgba(255,0,0,0.4);
+}
+
+input:focus, select:focus {
+  border-color: gold;
+  box-shadow: 0 0 8px gold;
+}
+
+/* ================= Highlight Anim ================= */
+.highlight {
+  background: linear-gradient(90deg, gold, #ffd700);
+  font-weight: bold;
+  animation: blinkHighlight 1s infinite alternate;
+}
+
+@keyframes blinkHighlight {
+  from { background: gold; }
+  to { background: #ffec8b; }
+}
+
+/* ================= Answer Reference Panel ================= */
+#answerRefContainer {
+  max-width: 850px;
+  margin-top: 10px;
+  background: rgba(255,255,200,0.95);
+  border: 3px dashed #a30000;
+  border-radius: 15px;
+  padding: 15px;
+}
+
+#answerRefContainer h3 {
+  color: #a30000;
+  text-shadow: 0 0 6px rgba(255,0,0,0.3);
+}
+
+#answerDisplay {
+  padding: 12px;
+  font-size: 1.2em;
+  font-weight: bold;
+  border-radius: 10px;
+  background: linear-gradient(#fff5b0, #ffeb80);
+  color: #a30000;
+  box-shadow: inset 0 0 5px rgba(255,0,0,0.4);
+  user-select: none;
+}
+
+.answer-hidden { color: #888; font-style: italic; }
+.answer-visible { color: #222; }
+
+/* ===== Grid for team-specific & grouped-shared answers ===== */
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.answer-card {
+  background: #fff9e6;
+  border: 2px solid #ffcc66;
+  border-radius: 12px;
+  padding: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  text-align: left;
+}
+
+.answer-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.05em;
+  background: #ffcc66;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: #a30000;
+}
+
+.answer-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.answer-card li { margin-bottom: 3px; }
+
+/* ===== New grid style for shared rounds ===== */
+.answer-shared-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 15px;
+  margin-top: 12px;
+}
+
+.answer-shared-card {
+  background: linear-gradient(#fffdf5, #fff4da);
+  border: 2px solid #ffcc66;
+  border-radius: 12px;
+  padding: 10px;
+  color: #a30000;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  text-align: center;
+  word-break: break-word;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.3s ease;
+}
+
+.answer-shared-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  background: linear-gradient(#fff9e6, #ffecb3);
+}
+
+/* ================= Main Menu Buttons ================= */
 .menu-container {
   display: flex;
   flex-direction: column;

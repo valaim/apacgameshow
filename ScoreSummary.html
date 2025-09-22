@@ -3,79 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <title>Game Show Wins Summary</title>
+
+<!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-<style>
-body {
-  font-family: 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #ffcccc, #ffe6e6);
-  margin: 0;
-  padding: 20px;
-  text-align: center;
-}
-header {
-  font-family: 'Luckiest Guy', cursive;
-  font-size: 2.2em;
-  background: #d52b1e;
-  color: white;
-  padding: 15px;
-  border-radius: 10px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-  position: relative; /* for back button positioning */
-}
-.back-btn {
-  position: absolute;
-  left: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-.back-btn svg {
-  width: 32px;
-  height: 32px;
-  stroke: white;
-  stroke-width: 3.5;
-  transition: transform 0.2s ease;
-}
-.back-btn:hover svg {
-  transform: translateX(-3px);
-}
-.container {
-  max-width: 500px;
-  margin: auto;
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-}
-th, td {
-  padding: 12px;
-  border: 1px solid #ccc;
-  text-align: center;
-}
-th {
-  background: #d52b1e;
-  color: white;
-}
-.highlight {
-  background: linear-gradient(90deg, gold, #ffd700);
-  font-weight: bold;
-}
-</style>
+<!-- Shared Game Show CSS -->
+<link rel="stylesheet" href="gameshow.css">
+
 </head>
 <body>
 
 <header>
-  <!-- Back button to go to index.html -->
+  <!-- Back button consistent with other pages -->
   <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
       <path d="M15 18l-6-6 6-6"/>
@@ -101,6 +40,9 @@ th {
       <tr><td>Team 5</td><td>0</td></tr>
     </tbody>
   </table>
+
+  <br>
+  <button onclick="resetWins()" class="reset-btn">♻ Reset Wins</button>
 </div>
 
 <!-- Firebase -->
@@ -139,6 +81,23 @@ db.ref("wins").on("value", snap => {
         tbody.appendChild(row);
     });
 });
+
+// Reset wins
+function resetWins() {
+    if (!confirm("⚠ Are you sure you want to reset ALL wins to 0?")) return;
+
+    const resetData = {
+      "Team 1": 0,
+      "Team 2": 0,
+      "Team 3": 0,
+      "Team 4": 0,
+      "Team 5": 0
+    };
+
+    db.ref("wins").set(resetData)
+      .then(() => alert("✅ All wins have been reset to 0."))
+      .catch(err => alert("❌ Error resetting wins: " + err.message));
+}
 </script>
 
 </body>

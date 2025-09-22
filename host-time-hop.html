@@ -9,6 +9,13 @@
 
 <!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
+
+<style>
+    /* Page-specific overrides */
+    .wrong-btn { background: grey; }
+    .reset-btn { background: darkred; }
+    .reset-btn:hover { background: red; }
+</style>
 </head>
 <body>
 
@@ -46,6 +53,22 @@
         <thead><tr><th>Team</th><th>Score</th></tr></thead>
         <tbody id="scoreTable"></tbody>
     </table>
+</div>
+
+<!-- Winner Control -->
+<div class="container">
+  <div class="winner-control">
+    <label for="winnerSelect">Declare Mini‑Game Winner:</label>
+    <select id="winnerSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+    <button onclick="declareWinner()">✅ Set Winner</button>
+  </div>
 </div>
 
 <script>
@@ -118,6 +141,25 @@ db.ref("teams").on("value", snap => {
         tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
     });
 });
+
+// ---- Declare Winner ----
+function declareWinner() {
+  const winner = document.getElementById('winnerSelect').value;
+
+  if (!winner) {
+    alert("Please select a team to declare as winner!");
+    return;
+  }
+
+  const winsRef = db.ref('wins/' + winner);
+  winsRef.transaction(currentWins => (currentWins || 0) + 1)
+    .then(() => {
+      alert(`${winner} wins this mini-game! 🏆`);
+    })
+    .catch(error => {
+      console.error("Error updating winner:", error);
+    });
+}
 </script>
 
 </body>
