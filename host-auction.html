@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="gameshow.css">
   
   <style>
-    /* Page-specific extras */
     .reset-btn { background-color: darkred; }
     .reset-btn:hover { background-color: red; }
     @keyframes fadeIn {
@@ -100,7 +99,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ---- Real-time updates ----
+// ---- Real-time Updates ----
 db.ref("auction/bids").on("value", snap => {
   const bids = snap.val() || {};
   Object.keys(bids).forEach(team => {
@@ -120,17 +119,15 @@ db.ref("auction/currentRound").on("value", snap => {
   document.getElementById("roundNum").innerText = snap.val();
 });
 
-// ---- Declare Winner ----
+// ---- Declare Mini‑Game Winner ----
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
-
   if (!winner) {
     alert("Please select a team to declare as winner!");
     return;
   }
 
-  const winsRef = db.ref('wins/' + winner);
-  winsRef.transaction(currentWins => (currentWins || 0) + 1)
+  db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
     .then(() => {
       alert(`${winner} wins this mini-game! 🏆`);
     })
@@ -139,7 +136,7 @@ function declareWinner() {
     });
 }
 
-// ---- Host Functions ----
+// ---- End Round & Deduct only winner bid ----
 function endRound() {
   db.ref("auction/bids").once("value").then(snap => {
     const bids = snap.val() || {};
@@ -155,64 +152,50 @@ function endRound() {
       }
     });
 
+    // Deduct money only for the winning team(s)
     winners.forEach(team => {
       db.ref("teams/" + team + "/money").transaction(money => Math.max((money || 0) - highest, 0));
     });
 
+    // Record winner(s) for applying points
+    db.ref("auction/currentRoundWinner").set(winners.join(" & "));
+
+    // Clear all bids for next round
     Object.keys(bids).forEach(team => {
       db.ref("auction/bids/" + team).set(0);
     });
 
-    db.ref("auction/currentRoundWinner").set(winners.join(" & "));
+    alert("Round Ended. Winner(s): " + winners.join(", "));
   });
 }
 
+// ---- Apply Points to Current Round Winner(s) ----
 function applyPoints() {
   const points = parseInt(document.getElementById("pointsInput").value) || 0;
-  db.ref("auction/currentRound").once("value").then(roundSnap => {
-    const currentRound = roundSnap.val() || 1;
-    db.ref("auction/currentRoundWinner").once("value").then(snap => {
-      let winners = snap.val();
-      if (!winners) {
-        alert("No winner set.");
-        return;
-      }
-      winners = winners.split("&").map(w => w.trim());
+  db.ref("auction/currentRoundWinner").once("value").then(snap => {
+    let winners = snap.val();
+    if (!winners) {
+      alert("No winner set.");
+      return;
+    }
+    winners = winners.split("&").map(w => w.trim());
 
-      winners.forEach(team => {
-        db.ref("teams/" + team + "/score").transaction(score => (score || 0) + points);
-      });
-
-      if (currentRound === 8) {
-        db.ref("teams").once("value").then(teamSnap => {
-          const teams = teamSnap.val() || {};
-          let highestScore = 0;
-          let gameWinners = [];
-
-          Object.keys(teams).forEach(team => {
-            if (teams[team].score > highestScore) {
-              highestScore = teams[team].score;
-              gameWinners = [team];
-            } else if (teams[team].score === highestScore) {
-              gameWinners.push(team);
-            }
-          });
-
-          gameWinners.forEach(team => {
-            db.ref("wins/" + team).transaction(val => (val || 0) + 1);
-          });
-
-          alert("🏆 Mini‑Game Winner(s): " + gameWinners.join(", "));
-        });
-      }
-
-      db.ref("auction/currentRound").transaction(r => (r || 1) + 1);
+    winners.forEach(team => {
+      db.ref("teams/" + team + "/score").transaction(score => (score || 0) + points);
     });
+
+    // Move to next round
+    db.ref("auction/currentRound").transaction(r => (r || 1) + 1);
+    // Clear last round winner
+    db.ref("auction/currentRoundWinner").set("");
+    document.getElementById("pointsInput").value = "";
   });
 }
 
+// ---- Full Game Reset ----
 function resetGame() {
   if (!confirm("⚠ Are you sure you want to reset the whole game?")) return;
+
   const initialData = {
     teams: {
       "Team 1": { money: 1000, score: 0 },
@@ -231,13 +214,10 @@ function resetGame() {
         "Team 4": 0,
         "Team 5": 0
       }
-    },
-    companyFeud: { currentQuestion: 1, answers: {} },
-    hotSeat: { currentQuestion: 1, player: "", scoreAwarded: 0 },
-    timeHopTrivia: { currentQuestion: 1, answers: {} }
+    }
   };
 
-  db.ref("/").set(initialData)
+  db.ref("/").update(initialData)
     .then(() => alert("✅ Game reset successfully!"))
     .catch(err => alert("❌ Error: " + err.message));
 }

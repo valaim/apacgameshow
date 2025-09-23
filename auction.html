@@ -27,7 +27,7 @@
 <div class="container">
   <div><strong>Round:</strong> <span id="roundNum">1</span></div>
 
-  <!-- Select your team -->
+  <!-- Select Team -->
   <div class="team-select-row">
     <label for="teamSelect">Select Your Team:</label>
     <select id="teamSelect">
@@ -66,6 +66,7 @@
 </div>
 
 <script>
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
   authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -83,7 +84,7 @@ let selectedTeam = document.getElementById('teamSelect').value;
 let lastMoney = null;
 let lastScore = null;
 
-// Change team selection
+// --- Change team selection ---
 document.getElementById('teamSelect').addEventListener('change', function () {
   selectedTeam = this.value;
   lastMoney = null;
@@ -91,31 +92,35 @@ document.getElementById('teamSelect').addEventListener('change', function () {
   listenToMyTeam();
 });
 
+// --- Submit Bid ---
 function submitBid() {
   const bid = parseFloat(document.getElementById('bidInput').value) || 0;
   if (bid <= 0) {
-    alert("Enter a valid bid.");
+    alert("Please enter a valid bid amount.");
     return;
   }
+  // Get my team's current money before setting bid
   db.ref('teams/' + selectedTeam + '/money').once('value').then(snap => {
     let money = snap.val() ?? 1000;
     if (bid > money) {
       alert("You don't have enough money for this bid!");
       return;
     }
+    // Set my team's bid
     db.ref('auction/bids/' + selectedTeam).set(bid);
+    document.getElementById('statusMessage').innerText = `✅ Bid of $${bid} placed successfully!`;
   });
 }
 
-// Listen to this player's team data
+// --- Listen for My Team Money/Score ---
 function listenToMyTeam() {
+  // Money & Score
   db.ref('teams/' + selectedTeam).on('value', snapshot => {
     const data = snapshot.val();
     if (data) {
       const moneyEl = document.getElementById('remainingMoney');
       const scoreEl = document.getElementById('totalScore');
 
-      // Animate money change
       if (lastMoney !== null && data.money !== lastMoney) {
         if (data.money > lastMoney) {
           moneyEl.classList.add('score-update');
@@ -125,7 +130,6 @@ function listenToMyTeam() {
         setTimeout(() => moneyEl.classList.remove('score-update', 'score-decrease'), 1000);
       }
 
-      // Animate score change
       if (lastScore !== null && data.score !== lastScore) {
         if (data.score > lastScore) {
           scoreEl.classList.add('score-update');
@@ -135,7 +139,6 @@ function listenToMyTeam() {
         setTimeout(() => scoreEl.classList.remove('score-update', 'score-decrease'), 1000);
       }
 
-      // Update display
       moneyEl.innerText = data.money ?? 1000;
       scoreEl.innerText = data.score ?? 0;
 
@@ -144,21 +147,24 @@ function listenToMyTeam() {
     }
   });
 
+  // Round Win/Loss Message
   db.ref('auction/currentRoundWinner').on('value', snapshot => {
     const winner = snapshot.val();
     if (winner) {
       document.getElementById('statusMessage').innerText =
         (winner.includes(selectedTeam)) ? "🎉 You won this round!" : "😢 You lost this round.";
+    } else {
+      document.getElementById('statusMessage').innerText = "⏳ Waiting for round to finish...";
     }
   });
 }
 
-// Auto-update current round display
+// --- Auto-update Current Round ---
 db.ref('auction/currentRound').on('value', snap => {
   document.getElementById('roundNum').innerText = snap.val() ?? 1;
 });
 
-// Live leaderboard: listens for both teams & bids changes
+// --- Live Leaderboard ---
 function loadLeaderboard() {
   function renderLeaderboard(teams, bids) {
     const tableData = Object.keys(teams).map(team => ({
@@ -168,6 +174,7 @@ function loadLeaderboard() {
       score: teams[team].score || 0
     }));
 
+    // Sort by score first, then money
     tableData.sort((a, b) => b.score - a.score || b.money - a.money);
 
     const tbody = document.querySelector("#auctionScoreboard tbody");
@@ -198,6 +205,7 @@ function loadLeaderboard() {
   });
 }
 
+// --- Init ---
 listenToMyTeam();
 loadLeaderboard();
 </script>
