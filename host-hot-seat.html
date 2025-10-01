@@ -90,14 +90,63 @@ const db = firebase.database();
 
 // ===== Answers Configuration =====
 const answers = {
-    1: { type: "team-specific", answers: {/* ... unchanged ... */} },
-    2: { type: "grouped-shared", answers: {/* ... unchanged ... */} },
-    3: { type: "shared", answers: [/* ... unchanged ... */] },
-    4: { type: "grouped-shared", answers: {/* ... unchanged ... */} },
-    5: { type: "shared", answers: [/* ... unchanged ... */] }
+    1: { 
+        type: "grouped-shared", 
+        answers: { 
+            "Group 1": ["Manish Nagpal","Kang Min Kim","Percival Lawrence Ramos","Koeun Chung","Bimal Balakrishnan"],
+            "Group 2": ["Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Kang Min Kim"],
+            "Group 3": ["Kang Min Kim","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Bimal Balakrishnan"],
+            "Group 4": ["Manish Nagpal","Kang Min Kim","Koeun Chung","Bimal Balakrishnan","Jackael"],
+            "Group 5": ["Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Kang Min Kim","Bimal Balakrishnan"]
+        } 
+    },
+    2: { 
+        type: "grouped-shared", 
+        answers: { 
+            "Desktop/Laptop": ["Apple","Dell","ExcaqVision","HP","Kingwin","Lenovo","Microsoft","Zebra"],
+            "Mobile": ["Apple","Blackview","Cat","i.safe MOBILE","Samsung"],
+            "Tablet": ["Apple","Bartec","Getac","Honeywell","Lenovo","Microsoft","Samsung"]
+        } 
+    },
+    3: { 
+        type: "shared", 
+        answers: [
+            "Adobe Creative Cloud","Azure","ChatGPT","Clipchamp","Connect","Basic Copilot","DocuSign","eFax",
+            "Edge","Knowledge Hub","Microsoft Bookings","Microsoft Excel","Microsoft Forms","Microsoft Lists",
+            "Microsoft Loop","Microsoft Teams","Microsoft Teams Meetings and Events","Microsoft Visio",
+            "Microsoft Viva Insights","MURAL","OneDrive","OneNote","Planner (Tasks by Planner App in Teams)",
+            "Planner Premium (formerly Project)","Poll Everywhere","Power BI","Scheduling Poll in Outlook",
+            "SharePoint","Sway","Viva Engage (Yammer)"
+        ] 
+    },
+    4: { 
+        type: "grouped-shared", 
+        answers: { 
+            "ASP": [
+                "Pooja Poornam Manivannan (C)","Naufal Ilham","Mark Rommel Mauntag","Giritharan Aanantharaj (C)",
+                "Elaine Ravelo","Fakrunnizam Bin Mohd Zulkifeli (C)","Dianne Mae Czarina Mansos Condes","Jean Caviar",
+                "Shamin Bin Ismail","Mia Gregorio","Avinash Gadi","Manjinder Singh Mankoo (C)",
+                "Srinivasu Reddy Venkatesan (C)","Jumpol Pangthong","Chanaphol Wiboonsook (C)",
+                "Thong Quoc Nguyen (C)","Merorl Canindo","Esa Andikashwara"
+            ],
+            "INSWA": ["Vishal Tiwari","Ajay Singh","Chandan Sharma","Piyush Singh (C)"],
+            "GCM": [
+                "Edward Zhou (C)","Hong Xiao","Feijun Zhao","Leon Lei Xiao","Ken Cui",
+                "Ethan Hu (C)","Angel Lu","Cast Ke","James Sit (C)"
+            ],
+            "JSK": [
+                "Kentaro Shiozaki (C)","Jiho Kim","Martin Macario (C)","Shunya Watanabe (C)",
+                "Ui Ishigami","Kazuki Fukazawa","Nadya Lesnik (C)"
+            ]
+        } 
+    },
+    5: { 
+        type: "shared", 
+        answers: ["PLACEHOLDER - Add Question 5 answers here"]
+    }
 };
 
-// Buzz order display
+// Show buzz order table
 db.ref("hotSeat/buzzOrder").on("value", snap => {
     const order = snap.val() || [];
     const tbody = document.getElementById("buzzTable");
@@ -113,49 +162,92 @@ db.ref("hotSeat/buzzOrder").on("value", snap => {
     });
 });
 
-let answersVisible = false; // Track toggle state
+let answersVisible = false;
 
 // Round tracking
 db.ref("hotSeat/currentRound").on("value", snap => {
     const round = snap.val() || 1;
     document.getElementById("roundNum").innerText = round;
-    const answerDisplay = document.getElementById("answerDisplay");
-    answerDisplay.innerText = "Click to Reveal";
-    answerDisplay.classList.remove("answer-visible");
-    answerDisplay.classList.add("answer-hidden");
-    answersVisible = false;
-
-    // click handler unchanged...
+    resetAnswerPanel();
 });
 
-// ==== Updated start/next round to set questionStartTime ====
+// UPDATED CLICK TO REVEAL LOGIC
+document.getElementById("answerDisplay").addEventListener("click", () => {
+    const round = parseInt(document.getElementById("roundNum").innerText, 10);
+    const answerData = answers[round];
+    const display = document.getElementById("answerDisplay");
+
+    if (!answersVisible) {
+        if (!answerData) {
+            display.innerText = "❌ No answer data for this round";
+        } else {
+            let html = "";
+            if (answerData.type === "team-specific" || answerData.type === "grouped-shared") {
+                html += '<div class="answer-grid">';
+                Object.entries(answerData.answers).forEach(([group, list]) => {
+                    html += `
+                        <div class="answer-card">
+                            <h4>${group}</h4>
+                            <ul>
+                                ${list.map(item => `<li>${item}</li>`).join("")}
+                            </ul>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else if (answerData.type === "shared") {
+                html += '<div class="answer-shared-grid">';
+                answerData.answers.forEach(item => {
+                    html += `<div class="answer-shared-card">${item}</div>`;
+                });
+                html += '</div>';
+            }
+            display.innerHTML = html;
+        }
+        display.classList.add("answer-visible");
+        display.classList.remove("answer-hidden");
+        answersVisible = true;
+    } else {
+        resetAnswerPanel();
+    }
+});
+
+function resetAnswerPanel() {
+    document.getElementById("answerDisplay").innerText = "Click to Reveal";
+    document.getElementById("answerDisplay").classList.remove("answer-visible");
+    document.getElementById("answerDisplay").classList.add("answer-hidden");
+    answersVisible = false;
+}
+
+// Game control functions
 function startRound() {
     const currentTime = Date.now();
     db.ref("hotSeat").update({
         buzzOrder: [],
         roundActive: true,
-        questionStartTime: currentTime // 🆕 sets start time for reaction time calculation
+        questionStartTime: currentTime
     });
-    console.log("Hot Seat round started at:", currentTime);
 }
 
-function endRound() { 
-    db.ref("hotSeat/roundActive").set(false); 
+function endRound() {
+    db.ref("hotSeat/roundActive").set(false);
 }
 
-function nextRound() { 
+function nextRound() {
     db.ref("hotSeat/currentRound").transaction(r => (r || 1) + 1);
     const currentTime = Date.now();
     db.ref("hotSeat").update({
         buzzOrder: [],
         roundActive: true,
-        questionStartTime: currentTime // 🆕 new start time for next round
+        questionStartTime: currentTime
     });
-    console.log("Next Hot Seat round started at:", currentTime);
 }
 
-// Other functions unchanged
-function awardPoints(team) { db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3); alert(`${team} gets 3 points!`); }
+function awardPoints(team) {
+    db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3);
+    alert(`${team} gets 3 points!`);
+}
+
 function markWrong(team) {
     db.ref("hotSeat/buzzOrder").once("value").then(snap => {
         let order = snap.val() || [];
@@ -163,12 +255,15 @@ function markWrong(team) {
         db.ref("hotSeat/buzzOrder").set(order);
     });
 }
+
 function resetGame() {
     if (confirm("Are you sure you want to reset the game? All scores will be cleared.")) {
         db.ref("hotSeat").set({ currentRound: 1, buzzOrder: [], roundActive: false, questionStartTime: null });
         db.ref("teams").set({});
     }
 }
+
+// Scores table
 db.ref("teams").on("value", snap => {
     const teams = snap.val() || {};
     const tbody = document.getElementById("scoreTable");
@@ -177,9 +272,13 @@ db.ref("teams").on("value", snap => {
         tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
     });
 });
+
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
-  if (!winner) { alert("Please select a team to declare as winner!"); return; }
+  if (!winner) {
+    alert("Please select a team to declare as winner!");
+    return;
+  }
   db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
     .then(() => alert(`${winner} wins this mini-game! 🏆`))
     .catch(error => console.error("Error updating winner:", error));

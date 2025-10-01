@@ -1,24 +1,33 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Auction Game - Participant</title>
+<meta charset="UTF-8">
+<title>Auction Game - Participant</title>
 
-  <!-- Firebase SDKs (must be first before your JS) -->
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-  
-  <!-- Shared CSS -->
-  <link rel="stylesheet" href="gameshow.css">
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-  <style>
-    #registrationSection { margin-bottom: 20px; }
-    .gameplaySection { display: none; }
-    #playerInfo { font-weight: bold; margin-bottom: 10px; }
-  </style>
+<!-- Shared CSS -->
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+#registrationSection { margin-bottom: 20px; }
+.gameplaySection { display: none; }
+#playerInfo { font-weight: bold; margin-bottom: 10px; }
+.switch-btn {
+  background: #f44336;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 8px;
+}
+</style>
 </head>
 <body>
 
@@ -52,6 +61,7 @@
 <!-- Gameplay Section -->
 <div class="container gameplaySection">
   <div id="playerInfo"></div>
+  <button class="switch-btn" onclick="switchPlayer()">🔄 Switch Player</button>
   <div><strong>Round:</strong> <span id="roundNum">1</span></div>
 
   <h2>Your Bid</h2>
@@ -82,9 +92,6 @@
 </div>
 
 <script>
-/* ===========================
-   Firebase Initialization
-=========================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
   authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -102,24 +109,57 @@ let playerName = null;
 let lastMoney = null;
 let lastScore = null;
 
-/* ===========================
-   Fix 1: Prevent infinite refresh loop on reset flag
-=========================== */
+// Listen for host registration reset
 db.ref("resetFlags/registrationReset").on("value", snapshot => {
   const flag = snapshot.val();
   const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
   if (flag && flag > lastHandled) {
     sessionStorage.setItem('lastResetTime', flag);
-    console.warn("🔄 Registration reset triggered by host.");
     sessionStorage.removeItem("playerName");
     sessionStorage.removeItem("playerTeam");
     location.reload();
   }
 });
 
-/* ===========================
-   Fix 2: Prevent duplicate player entries
-=========================== */
+// Restore player but check if exists in Firebase
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+
+  if (storedName && storedTeam) {
+    db.ref('players').once('value').then(snapshot => {
+      const players = snapshot.val() || {};
+      const exists = Object.values(players).some(p =>
+        p.name && p.team &&
+        p.name.toLowerCase() === storedName.toLowerCase() &&
+        p.team === storedTeam
+      );
+      if (exists) {
+        playerName = storedName;
+        selectedTeam = storedTeam;
+        document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+        document.getElementById('registrationSection').style.display = 'none';
+        document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+        listenToMyTeam();
+        loadLeaderboard();
+      } else {
+        switchPlayer(); // Force re-register
+      }
+    });
+  }
+});
+
+// Switch Player
+function switchPlayer() {
+  sessionStorage.removeItem("playerName");
+  sessionStorage.removeItem("playerTeam");
+  playerName = null;
+  selectedTeam = null;
+  document.getElementById('registrationSection').style.display = 'block';
+  document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'none');
+}
+
+// Registration
 function registerInline() {
   const nameVal = document.getElementById('playerName').value.trim();
   const teamVal = document.getElementById('teamSelectReg').value;
@@ -132,7 +172,6 @@ function registerInline() {
   playerName = nameVal;
   selectedTeam = teamVal;
 
-  // Avoid duplicate by checking existing players
   db.ref('players').once('value').then(snapshot => {
     const players = snapshot.val() || {};
     const exists = Object.values(players).some(p =>
@@ -150,33 +189,12 @@ function registerInline() {
     document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
     document.getElementById('registrationSection').style.display = 'none';
     document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
-
     listenToMyTeam();
     loadLeaderboard();
   });
 }
 
-/* ===========================
-   Restore player on page load
-=========================== */
-document.addEventListener("DOMContentLoaded", () => {
-  const storedName = sessionStorage.getItem("playerName");
-  const storedTeam = sessionStorage.getItem("playerTeam");
-
-  if (storedName && storedTeam) {
-    playerName = storedName;
-    selectedTeam = storedTeam;
-    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
-    document.getElementById('registrationSection').style.display = 'none';
-    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
-    listenToMyTeam();
-    loadLeaderboard();
-  }
-});
-
-/* ===========================
-   Submit Bid
-=========================== */
+// Submit Bid
 function submitBid() {
   const bid = parseFloat(document.getElementById('bidInput').value) || 0;
   if (bid <= 0) {
@@ -203,9 +221,7 @@ function submitBid() {
   });
 }
 
-/* ===========================
-   Listen to My Team Updates
-=========================== */
+// Listen to My Team updates
 function listenToMyTeam() {
   db.ref('teams/' + selectedTeam).on('value', snapshot => {
     const data = snapshot.val();
@@ -217,7 +233,6 @@ function listenToMyTeam() {
         moneyEl.classList.add(data.money > lastMoney ? 'score-update' : 'score-decrease');
         setTimeout(() => moneyEl.classList.remove('score-update', 'score-decrease'), 1000);
       }
-
       if (lastScore !== null && data.score !== lastScore) {
         scoreEl.classList.add(data.score > lastScore ? 'score-update' : 'score-decrease');
         setTimeout(() => scoreEl.classList.remove('score-update', 'score-decrease'), 1000);
@@ -245,9 +260,7 @@ function listenToMyTeam() {
   });
 }
 
-/* ===========================
-   Leaderboard
-=========================== */
+// Leaderboard
 function loadLeaderboard() {
   function renderLeaderboard(teams, bids) {
     const tableData = Object.keys(teams).map(team => ({
@@ -283,6 +296,5 @@ function loadLeaderboard() {
   });
 }
 </script>
-
 </body>
 </html>

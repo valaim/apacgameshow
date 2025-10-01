@@ -14,6 +14,15 @@
 #registrationSection { margin-bottom: 20px; }
 .gameplaySection { display: none; }
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
+.switch-btn {
+  background: #f44336;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 8px;
+}
 </style>
 </head>
 <body>
@@ -48,6 +57,7 @@
 <!-- Gameplay Section -->
 <div class="container gameplaySection">
   <div id="playerInfo"></div>
+  <button class="switch-btn" onclick="switchPlayer()">🔄 Switch Player</button>
   <h3>Round: <span id="roundNum">1</span></h3>
   <p id="statusMsg">Waiting for round to start...</p>
   <button id="buzzBtn" onclick="buzz()">🚨 Buzz In!</button>
@@ -79,7 +89,7 @@ let selectedTeam = null;
 let playerName = null;
 let questionStartTime = null;
 
-// Prevent infinite reload loop if reset triggered
+// Listen for host registration reset
 db.ref("resetFlags/registrationReset").on("value", snapshot => {
   const flag = snapshot.val();
   const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
@@ -90,6 +100,43 @@ db.ref("resetFlags/registrationReset").on("value", snapshot => {
     location.reload();
   }
 });
+
+// Restore player but check if they exist
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+
+  if (storedName && storedTeam) {
+    db.ref('players').once('value').then(snapshot => {
+      const players = snapshot.val() || {};
+      const exists = Object.values(players).some(p =>
+        p.name && p.team &&
+        p.name.toLowerCase() === storedName.toLowerCase() &&
+        p.team === storedTeam
+      );
+      if (exists) {
+        playerName = storedName;
+        selectedTeam = storedTeam;
+        document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+        document.getElementById('registrationSection').style.display = 'none';
+        document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+        initGameListeners();
+      } else {
+        switchPlayer(); // Force re-register if missing
+      }
+    });
+  }
+});
+
+// Switch Player
+function switchPlayer() {
+  sessionStorage.removeItem("playerName");
+  sessionStorage.removeItem("playerTeam");
+  playerName = null;
+  selectedTeam = null;
+  document.getElementById('registrationSection').style.display = 'block';
+  document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'none');
+}
 
 // Registration
 function registerInline() {
@@ -127,33 +174,16 @@ function registerInline() {
   });
 }
 
-// Restore player
-document.addEventListener("DOMContentLoaded", () => {
-  const storedName = sessionStorage.getItem("playerName");
-  const storedTeam = sessionStorage.getItem("playerTeam");
-  if (storedName && storedTeam) {
-    playerName = storedName;
-    selectedTeam = storedTeam;
-    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
-    document.getElementById('registrationSection').style.display = 'none';
-    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
-    initGameListeners();
-  }
-});
-
 // Game Listeners
 function initGameListeners() {
-  // Round number
   db.ref("hotSeat/currentRound").on("value", snap => {
     document.getElementById("roundNum").innerText = snap.val() || 1;
   });
 
-  // Question start time
   db.ref("hotSeat/questionStartTime").on("value", snap => {
     questionStartTime = snap.val() || null;
   });
 
-  // BUZZ button state
   db.ref("hotSeat/roundActive").on("value", snap => {
     const active = snap.val();
     document.getElementById("buzzBtn").disabled = !active;
@@ -161,7 +191,6 @@ function initGameListeners() {
       "Round active! BUZZ to answer!" : "Waiting for round to start...";
   });
 
-  // Leaderboard
   db.ref("teams").on("value", snap => {
     const teams = snap.val() || {};
     const tbody = document.getElementById("scoreTable");
@@ -182,13 +211,11 @@ function buzz() {
       order.push(selectedTeam);
       orderRef.set(order);
 
-      // Calculate reaction time
       let reactionSecs = 0;
       if (questionStartTime) {
         reactionSecs = (Date.now() - questionStartTime) / 1000;
       }
 
-      // Log buzz for Fastest Finger
       db.ref("gameHistory").push({
         game: "hotSeat",
         event: "buzz",
