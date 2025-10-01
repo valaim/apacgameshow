@@ -9,8 +9,13 @@
 <!-- Google Fonts -->
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-<!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
+
+<style>
+#registrationSection { margin-bottom: 20px; }
+.gameplaySection { display: none; }
+#playerInfo { font-weight: bold; margin-bottom: 10px; }
+</style>
 </head>
 <body>
 
@@ -24,20 +29,28 @@
   💬 Company Feud
 </header>
 
-<div class="container">
-  <div><strong>Question:</strong> <span id="questionNum">1</span></div>
+<!-- Registration Section -->
+<div class="container" id="registrationSection">
+  <h3>👤 Player Registration</h3>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <label for="teamSelectReg">Select Your Team:</label>
+  <select id="teamSelectReg">
+    <option value="">-- Choose a team --</option>
+    <option value="Team 1">Team 1</option>
+    <option value="Team 2">Team 2</option>
+    <option value="Team 3">Team 3</option>
+    <option value="Team 4">Team 4</option>
+    <option value="Team 5">Team 5</option>
+  </select>
+  <br><br>
+  <button onclick="registerInline()">✅ Join Game</button>
+</div>
 
-  <!-- UPDATED: Select team row -->
-  <div class="team-select-row">
-    <label for="teamSelect">Select Your Team:</label>
-    <select id="teamSelect">
-      <option value="Team 1">Team 1</option>
-      <option value="Team 2">Team 2</option>
-      <option value="Team 3">Team 3</option>
-      <option value="Team 4">Team 4</option>
-      <option value="Team 5">Team 5</option>
-    </select>
-  </div>
+<!-- Gameplay Section -->
+<div class="container gameplaySection">
+  <div id="playerInfo"></div>
+
+  <div><strong>Question:</strong> <span id="questionNum">1</span></div>
 
   <h3>Your Guess</h3>
   <div class="form-row">
@@ -48,7 +61,8 @@
   <div class="status" id="statusMessage">Waiting for your submission...</div>
 </div>
 
-<div class="container">
+<!-- Scoreboard -->
+<div class="container gameplaySection">
   <h3>📊 Company Feud Scores</h3>
   <table id="miniScoreTable">
     <thead>
@@ -71,53 +85,119 @@ const firebaseConfig = {
   messagingSenderId: "572761881903",
   appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let selectedTeam = document.getElementById("teamSelect").value;
-document.getElementById("teamSelect").addEventListener("change", () => {
-    selectedTeam = document.getElementById("teamSelect").value;
+let selectedTeam = null;
+let playerName = null;
+
+// Prevent infinite reload loop if reset triggered
+db.ref("resetFlags/registrationReset").on("value", snapshot => {
+  const flag = snapshot.val();
+  const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
+  if (flag && flag > lastHandled) {
+    sessionStorage.setItem('lastResetTime', flag);
+    sessionStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerTeam");
+    location.reload();
+  }
 });
 
-// Update question number
-db.ref("companyFeud/currentQuestion").on("value", snap => {
-    document.getElementById("questionNum").innerText = snap.val() || 1;
-});
+// Registration
+function registerInline() {
+  const nameVal = document.getElementById('playerName').value.trim();
+  const teamVal = document.getElementById('teamSelectReg').value;
 
-// Submit guess
-function submitGuess() {
-    const guess = document.getElementById("guessInput").value.trim();
-    if (!guess) {
-        alert("❌ Please enter a guess first.");
-        return;
+  if (!nameVal || !teamVal) {
+    alert("Please enter your name and select your team.");
+    return;
+  }
+
+  playerName = nameVal;
+  selectedTeam = teamVal;
+
+  // Avoid duplicates
+  db.ref('players').once('value').then(snapshot => {
+    const players = snapshot.val() || {};
+    const exists = Object.values(players).some(p =>
+      p.name && p.team &&
+      p.name.toLowerCase() === playerName.toLowerCase() &&
+      p.team === selectedTeam
+    );
+    if (!exists) {
+      db.ref('players').push({ name: playerName, team: selectedTeam });
     }
-    const timestamp = Date.now();
-    const guessData = { guess: guess, timestamp: timestamp };
-    const teamRef = db.ref(`companyFeud/answers/${selectedTeam}`);
-    teamRef.once("value").then(snap => {
-        let guesses = snap.val() || [];
-        if (!Array.isArray(guesses)) guesses = [];
-        guesses.push(guessData);
-        teamRef.set(guesses).then(() => {
-            document.getElementById("statusMessage").innerText = `✅ Submitted: ${guess}`;
-            document.getElementById("guessInput").value = "";
-        });
-    });
+
+    sessionStorage.setItem("playerName", playerName);
+    sessionStorage.setItem("playerTeam", selectedTeam);
+
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+
+    initGameListeners();
+  });
 }
 
-// Mini-game scoreboard
-db.ref("companyFeud/roundScores").on("value", snap => {
+// Restore player
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+  if (storedName && storedTeam) {
+    playerName = storedName;
+    selectedTeam = storedTeam;
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+    initGameListeners();
+  }
+});
+
+// Game Listeners
+function initGameListeners() {
+  // Question number
+  db.ref("companyFeud/currentQuestion").on("value", snap => {
+    document.getElementById("questionNum").innerText = snap.val() || 1;
+  });
+
+  // Mini-game scoreboard
+  db.ref("companyFeud/roundScores").on("value", snap => {
     const scores = snap.val() || {};
     const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
     const tbody = document.querySelector("#miniScoreTable tbody");
     tbody.innerHTML = "";
     sorted.forEach(([team, score]) => {
-        const row = `<tr><td>${team}</td><td>${score}</td></tr>`;
-        tbody.innerHTML += row;
+      const row = `<tr><td>${team}</td><td>${score}</td></tr>`;
+      tbody.innerHTML += row;
     });
-});
-</script>
+  });
+}
 
+// Submit guess
+function submitGuess() {
+  const guess = document.getElementById("guessInput").value.trim();
+  if (!guess) {
+    alert("❌ Please enter a guess first.");
+    return;
+  }
+  const timestamp = Date.now();
+  const guessData = {
+    guess: guess,
+    player: playerName || "Unknown",
+    team: selectedTeam,
+    timestamp: timestamp
+  };
+  const teamRef = db.ref(`companyFeud/answers/${selectedTeam}`);
+  teamRef.once("value").then(snap => {
+    let guesses = snap.val() || [];
+    if (!Array.isArray(guesses)) guesses = [];
+    guesses.push(guessData);
+    teamRef.set(guesses).then(() => {
+      document.getElementById("statusMessage").innerText = `✅ Submitted: ${guess}`;
+      document.getElementById("guessInput").value = "";
+    });
+  });
+}
+</script>
 </body>
 </html>

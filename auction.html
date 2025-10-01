@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Auction Game - Participant</title>
+
+  <!-- Firebase SDKs (must be first before your JS) -->
   <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
@@ -11,6 +13,12 @@
   
   <!-- Shared CSS -->
   <link rel="stylesheet" href="gameshow.css">
+
+  <style>
+    #registrationSection { margin-bottom: 20px; }
+    .gameplaySection { display: none; }
+    #playerInfo { font-weight: bold; margin-bottom: 10px; }
+  </style>
 </head>
 <body>
 
@@ -24,20 +32,27 @@
   🎯 Auction Game
 </header>
 
-<div class="container">
-  <div><strong>Round:</strong> <span id="roundNum">1</span></div>
+<!-- Registration Section -->
+<div class="container" id="registrationSection">
+  <h3>👤 Player Registration</h3>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <label for="teamSelectReg">Select Your Team:</label>
+  <select id="teamSelectReg">
+    <option value="">-- Choose a team --</option>
+    <option value="Team 1">Team 1</option>
+    <option value="Team 2">Team 2</option>
+    <option value="Team 3">Team 3</option>
+    <option value="Team 4">Team 4</option>
+    <option value="Team 5">Team 5</option>
+  </select>
+  <br><br>
+  <button onclick="registerInline()">✅ Join Game</button>
+</div>
 
-  <!-- Select Team -->
-  <div class="team-select-row">
-    <label for="teamSelect">Select Your Team:</label>
-    <select id="teamSelect">
-      <option value="Team 1">Team 1</option>
-      <option value="Team 2">Team 2</option>
-      <option value="Team 3">Team 3</option>
-      <option value="Team 4">Team 4</option>
-      <option value="Team 5">Team 5</option>
-    </select>
-  </div>
+<!-- Gameplay Section -->
+<div class="container gameplaySection">
+  <div id="playerInfo"></div>
+  <div><strong>Round:</strong> <span id="roundNum">1</span></div>
 
   <h2>Your Bid</h2>
   <div class="form-row">
@@ -50,7 +65,8 @@
   <div class="status" id="statusMessage">⏳ Waiting for round to finish...</div>
 </div>
 
-<div class="container">
+<!-- Leaderboard Section -->
+<div class="container gameplaySection">
   <h3>📊 Current Auction Leaderboard</h3>
   <table id="auctionScoreboard">
     <thead>
@@ -66,7 +82,9 @@
 </div>
 
 <script>
-// --- Firebase Config ---
+/* ===========================
+   Firebase Initialization
+=========================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
   authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -76,45 +94,119 @@ const firebaseConfig = {
   messagingSenderId: "572761881903",
   appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let selectedTeam = document.getElementById('teamSelect').value;
+let selectedTeam = null;
+let playerName = null;
 let lastMoney = null;
 let lastScore = null;
 
-// --- Change team selection ---
-document.getElementById('teamSelect').addEventListener('change', function () {
-  selectedTeam = this.value;
-  lastMoney = null;
-  lastScore = null;
-  listenToMyTeam();
+/* ===========================
+   Fix 1: Prevent infinite refresh loop on reset flag
+=========================== */
+db.ref("resetFlags/registrationReset").on("value", snapshot => {
+  const flag = snapshot.val();
+  const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
+  if (flag && flag > lastHandled) {
+    sessionStorage.setItem('lastResetTime', flag);
+    console.warn("🔄 Registration reset triggered by host.");
+    sessionStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerTeam");
+    location.reload();
+  }
 });
 
-// --- Submit Bid ---
+/* ===========================
+   Fix 2: Prevent duplicate player entries
+=========================== */
+function registerInline() {
+  const nameVal = document.getElementById('playerName').value.trim();
+  const teamVal = document.getElementById('teamSelectReg').value;
+  
+  if (!nameVal || !teamVal) {
+    alert("Please enter your name and select your team.");
+    return;
+  }
+
+  playerName = nameVal;
+  selectedTeam = teamVal;
+
+  // Avoid duplicate by checking existing players
+  db.ref('players').once('value').then(snapshot => {
+    const players = snapshot.val() || {};
+    const exists = Object.values(players).some(p =>
+      p.name && p.team &&
+      p.name.toLowerCase() === playerName.toLowerCase() &&
+      p.team === selectedTeam
+    );
+    if (!exists) {
+      db.ref('players').push({ name: playerName, team: selectedTeam });
+    }
+
+    sessionStorage.setItem("playerName", playerName);
+    sessionStorage.setItem("playerTeam", selectedTeam);
+
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+
+    listenToMyTeam();
+    loadLeaderboard();
+  });
+}
+
+/* ===========================
+   Restore player on page load
+=========================== */
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+
+  if (storedName && storedTeam) {
+    playerName = storedName;
+    selectedTeam = storedTeam;
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+    listenToMyTeam();
+    loadLeaderboard();
+  }
+});
+
+/* ===========================
+   Submit Bid
+=========================== */
 function submitBid() {
   const bid = parseFloat(document.getElementById('bidInput').value) || 0;
   if (bid <= 0) {
     alert("Please enter a valid bid amount.");
     return;
   }
-  // Get my team's current money before setting bid
+  
   db.ref('teams/' + selectedTeam + '/money').once('value').then(snap => {
-    let money = snap.val() ?? 1000;
+    const money = snap.val() ?? 1000;
     if (bid > money) {
       alert("You don't have enough money for this bid!");
       return;
     }
-    // Set my team's bid
     db.ref('auction/bids/' + selectedTeam).set(bid);
+    db.ref('gameHistory').push({
+      game: "auction",
+      event: "bid",
+      player: playerName,
+      team: selectedTeam,
+      bidAmount: bid,
+      timestamp: Date.now()
+    });
     document.getElementById('statusMessage').innerText = `✅ Bid of $${bid} placed successfully!`;
   });
 }
 
-// --- Listen for My Team Money/Score ---
+/* ===========================
+   Listen to My Team Updates
+=========================== */
 function listenToMyTeam() {
-  // Money & Score
   db.ref('teams/' + selectedTeam).on('value', snapshot => {
     const data = snapshot.val();
     if (data) {
@@ -122,32 +214,22 @@ function listenToMyTeam() {
       const scoreEl = document.getElementById('totalScore');
 
       if (lastMoney !== null && data.money !== lastMoney) {
-        if (data.money > lastMoney) {
-          moneyEl.classList.add('score-update');
-        } else {
-          moneyEl.classList.add('score-decrease');
-        }
+        moneyEl.classList.add(data.money > lastMoney ? 'score-update' : 'score-decrease');
         setTimeout(() => moneyEl.classList.remove('score-update', 'score-decrease'), 1000);
       }
 
       if (lastScore !== null && data.score !== lastScore) {
-        if (data.score > lastScore) {
-          scoreEl.classList.add('score-update');
-        } else {
-          scoreEl.classList.add('score-decrease');
-        }
+        scoreEl.classList.add(data.score > lastScore ? 'score-update' : 'score-decrease');
         setTimeout(() => scoreEl.classList.remove('score-update', 'score-decrease'), 1000);
       }
 
       moneyEl.innerText = data.money ?? 1000;
       scoreEl.innerText = data.score ?? 0;
-
       lastMoney = data.money;
       lastScore = data.score;
     }
   });
 
-  // Round Win/Loss Message
   db.ref('auction/currentRoundWinner').on('value', snapshot => {
     const winner = snapshot.val();
     if (winner) {
@@ -157,14 +239,15 @@ function listenToMyTeam() {
       document.getElementById('statusMessage').innerText = "⏳ Waiting for round to finish...";
     }
   });
+
+  db.ref('auction/currentRound').on('value', snap => {
+    document.getElementById('roundNum').innerText = snap.val() ?? 1;
+  });
 }
 
-// --- Auto-update Current Round ---
-db.ref('auction/currentRound').on('value', snap => {
-  document.getElementById('roundNum').innerText = snap.val() ?? 1;
-});
-
-// --- Live Leaderboard ---
+/* ===========================
+   Leaderboard
+=========================== */
 function loadLeaderboard() {
   function renderLeaderboard(teams, bids) {
     const tableData = Object.keys(teams).map(team => ({
@@ -174,9 +257,7 @@ function loadLeaderboard() {
       score: teams[team].score || 0
     }));
 
-    // Sort by score first, then money
     tableData.sort((a, b) => b.score - a.score || b.money - a.money);
-
     const tbody = document.querySelector("#auctionScoreboard tbody");
     tbody.innerHTML = "";
     tableData.forEach(row => {
@@ -192,22 +273,15 @@ function loadLeaderboard() {
   let latestBids = {};
   let latestTeams = {};
 
-  // Listen for bid changes
   db.ref('auction/bids').on('value', snapBids => {
     latestBids = snapBids.val() || {};
     renderLeaderboard(latestTeams, latestBids);
   });
-
-  // Listen for team changes
   db.ref('teams').on('value', snapTeams => {
     latestTeams = snapTeams.val() || {};
     renderLeaderboard(latestTeams, latestBids);
   });
 }
-
-// --- Init ---
-listenToMyTeam();
-loadLeaderboard();
 </script>
 
 </body>

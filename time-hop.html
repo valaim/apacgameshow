@@ -9,6 +9,12 @@
 
 <!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
+
+<style>
+#registrationSection { margin-bottom: 20px; }
+.gameplaySection { display: none; }
+#playerInfo { font-weight: bold; margin-bottom: 10px; }
+</style>
 </head>
 <body>
 
@@ -22,94 +28,180 @@
   🕵 Time Hop Trivia
 </header>
 
-<div class="container">
-    <!-- Team selector -->
-    <div class="team-select-row">
-        <label for="teamSelect">Select Your Team:</label>
-        <select id="teamSelect">
-            <option value="Team 1">Team 1</option>
-            <option value="Team 2">Team 2</option>
-            <option value="Team 3">Team 3</option>
-            <option value="Team 4">Team 4</option>
-            <option value="Team 5">Team 5</option>
-        </select>
-    </div>
+<!-- Registration Section -->
+<div class="container" id="registrationSection">
+  <h3>👤 Player Registration</h3>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <label for="teamSelectReg">Select Your Team:</label>
+  <select id="teamSelectReg">
+    <option value="">-- Choose a team --</option>
+    <option value="Team 1">Team 1</option>
+    <option value="Team 2">Team 2</option>
+    <option value="Team 3">Team 3</option>
+    <option value="Team 4">Team 4</option>
+    <option value="Team 5">Team 5</option>
+  </select>
+  <br><br>
+  <button onclick="registerInline()">✅ Join Game</button>
+</div>
 
-    <!-- Question Number -->
+<!-- Gameplay Section -->
+<div class="container gameplaySection">
+    <div id="playerInfo"></div>
     <h3>Question: <span id="questionNum">1</span></h3>
     <p id="statusMsg">Waiting for the question to start...</p>
-
-    <!-- Big centered buzz/answer button -->
     <button id="buzzBtn" onclick="buzz()">🚨 Buzz In!</button>
 </div>
 
-<div class="container">
+<!-- Leaderboard -->
+<div class="container gameplaySection">
     <h3>📊 Leaderboard</h3>
     <table>
-        <thead>
-            <tr><th>Team</th><th>Score</th></tr>
-        </thead>
+        <thead><tr><th>Team</th><th>Score</th></tr></thead>
         <tbody id="scoreTable"></tbody>
     </table>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const firebaseConfig = {
-        apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
-        authDomain: "apacgameshow-f8d5d.firebaseapp.com",
-        databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
-        projectId: "apacgameshow-f8d5d",
-        storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
-        messagingSenderId: "572761881903",
-        appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
-    };
+/* ✅ Firebase Setup */
+const firebaseConfig = {
+    apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+    authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+    databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "apacgameshow-f8d5d",
+    storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+    messagingSenderId: "572761881903",
+    appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+let selectedTeam = null;
+let playerName = null;
+let questionStartTime = null;
 
-    let teamName = document.getElementById("teamSelect").value;
-
-    document.getElementById("teamSelect").addEventListener("change", e => {
-        teamName = e.target.value;
-    });
-
-    // Current question number
-    db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
-        document.getElementById("questionNum").innerText = snap.val() || 1;
-    });
-
-    // Enable/disable button
-    db.ref("timeHopTrivia/questionActive").on("value", snap => {
-        const active = snap.val();
-        document.getElementById("buzzBtn").disabled = !active;
-        document.getElementById("statusMsg").innerText = active ?
-            "Question active! Buzz to answer!" : "Waiting for the next question...";
-    });
-
-    // Buzz in function
-    window.buzz = function() {
-        const orderRef = db.ref("timeHopTrivia/buzzOrder");
-        orderRef.once("value").then(snap => {
-            let order = snap.val() || [];
-            if (!order.includes(teamName)) {
-                order.push(teamName);
-                orderRef.set(order);
-            }
-        });
-    };
-
-    // Leaderboard live update
-    db.ref("teams").on("value", snap => {
-        const teams = snap.val() || {};
-        const tbody = document.getElementById("scoreTable");
-        tbody.innerHTML = "";
-        const sortedTeams = Object.keys(teams).sort((a, b) => (teams[b].score || 0) - (teams[a].score || 0));
-        sortedTeams.forEach(team => {
-            tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
-        });
-    });
+/* 🔄 Prevent infinite reload loop */
+db.ref("resetFlags/registrationReset").on("value", snapshot => {
+  const flag = snapshot.val();
+  const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
+  if (flag && flag > lastHandled) {
+    sessionStorage.setItem('lastResetTime', flag);
+    sessionStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerTeam");
+    location.reload();
+  }
 });
+
+/* ✅ Registration */
+function registerInline() {
+  const nameVal = document.getElementById('playerName').value.trim();
+  const teamVal = document.getElementById('teamSelectReg').value;
+
+  if (!nameVal || !teamVal) {
+    alert("Please enter your name and select your team.");
+    return;
+  }
+
+  playerName = nameVal;
+  selectedTeam = teamVal;
+
+  // Avoid duplicate players
+  db.ref('players').once('value').then(snapshot => {
+    const players = snapshot.val() || {};
+    const exists = Object.values(players).some(p =>
+      p.name && p.team &&
+      p.name.toLowerCase() === playerName.toLowerCase() &&
+      p.team === selectedTeam
+    );
+    if (!exists) {
+      db.ref('players').push({ name: playerName, team: selectedTeam });
+    }
+
+    sessionStorage.setItem("playerName", playerName);
+    sessionStorage.setItem("playerTeam", selectedTeam);
+
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+
+    initGameListeners();
+  });
+}
+
+/* Restore player if already registered */
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+
+  if (storedName && storedTeam) {
+    playerName = storedName;
+    selectedTeam = storedTeam;
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+    initGameListeners();
+  }
+});
+
+/* 📡 Game Listeners */
+function initGameListeners() {
+  // Question number
+  db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
+      document.getElementById("questionNum").innerText = snap.val() || 1;
+  });
+
+  // Question start time for reaction measurement
+  db.ref("timeHopTrivia/questionStartTime").on("value", snap => {
+      questionStartTime = snap.val() || null;
+  });
+
+  // Enable/disable buzz
+  db.ref("timeHopTrivia/questionActive").on("value", snap => {
+      const active = snap.val();
+      document.getElementById("buzzBtn").disabled = !active;
+      document.getElementById("statusMsg").innerText = active ?
+          "Question active! Buzz to answer!" : "Waiting for the next question...";
+  });
+
+  // Leaderboard
+  db.ref("teams").on("value", snap => {
+      const teams = snap.val() || {};
+      const tbody = document.getElementById("scoreTable");
+      tbody.innerHTML = "";
+      const sorted = Object.keys(teams).sort((a, b) => (teams[b].score || 0) - (teams[a].score || 0));
+      sorted.forEach(team => {
+          tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
+      });
+  });
+}
+
+/* 🚨 Buzz function */
+function buzz() {
+    const orderRef = db.ref("timeHopTrivia/buzzOrder");
+    orderRef.once("value").then(snap => {
+        let order = snap.val() || [];
+        if (!order.includes(selectedTeam)) {
+            order.push(selectedTeam);
+            orderRef.set(order);
+
+            // Calculate reaction time
+            let reactionSecs = 0;
+            if (questionStartTime) {
+                reactionSecs = (Date.now() - questionStartTime) / 1000;
+            }
+
+            // Log for awards
+            db.ref("gameHistory").push({
+                game: "timeHop",
+                event: "buzz",
+                player: playerName || "Unknown",
+                team: selectedTeam,
+                reactionTime: reactionSecs,
+                timestamp: Date.now()
+            });
+        }
+    });
+}
 </script>
 
 </body>

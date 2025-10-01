@@ -6,12 +6,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
 
 <style>
-    /* Page-specific overrides */
     .wrong-btn { background: grey; }
     .reset-btn { background: darkred; }
     .reset-btn:hover { background: red; }
@@ -72,6 +69,7 @@
 </div>
 
 <script>
+/* Firebase Config */
 const firebaseConfig = {
     apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
     authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -84,7 +82,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Buzz order table
+/* ===== Buzz Order Table ===== */
 db.ref("timeHopTrivia/buzzOrder").on("value", snap => {
     const order = snap.val() || [];
     const tbody = document.getElementById("buzzTable");
@@ -100,39 +98,90 @@ db.ref("timeHopTrivia/buzzOrder").on("value", snap => {
     });
 });
 
-// Question number
+/* ===== Question Number ===== */
 db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
     document.getElementById("questionNum").innerText = snap.val() || 1;
 });
 
+/* ===== Functions ===== */
 function startQuestion() {
-    db.ref("timeHopTrivia").update({ buzzOrder: [], questionActive: true });
+    const currentTime = Date.now();
+    db.ref("timeHopTrivia").update({
+        buzzOrder: [],
+        questionActive: true,
+        questionStartTime: currentTime
+    });
+    console.log("Question started at:", currentTime);
 }
+
 function endQuestion() {
     db.ref("timeHopTrivia/questionActive").set(false);
 }
+
 function nextQuestion() {
     db.ref("timeHopTrivia/currentQuestion").transaction(q => (q || 1) + 1);
-    db.ref("timeHopTrivia").update({ buzzOrder: [], questionActive: false });
+    const currentTime = Date.now();
+    db.ref("timeHopTrivia").update({
+        buzzOrder: [],
+        questionActive: true,
+        questionStartTime: currentTime
+    });
+    console.log("Moved to next question at:", currentTime);
 }
+
 function awardPoints(team) {
     db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3);
     alert(`${team} gets 3 points!`);
 }
+
+/* 🆕 Updated markWrong to log for Trigger Happy Award */
 function markWrong(team) {
+    // Remove from buzz order
     db.ref("timeHopTrivia/buzzOrder").once("value").then(snap => {
         let order = snap.val() || [];
         order = order.filter(t => t !== team);
         db.ref("timeHopTrivia/buzzOrder").set(order);
     });
+
+    // Lookup player name by team from players list
+    db.ref("players").once("value").then(pSnap => {
+        let playerNameFound = "Unknown";
+        const players = pSnap.val() || {};
+        Object.keys(players).forEach(key => {
+            if (players[key].team === team) {
+                playerNameFound = players[key].name;
+            }
+        });
+
+        // Get question start time to calculate reaction
+        db.ref("timeHopTrivia/questionStartTime").once("value").then(qSnap => {
+            const qStart = qSnap.val() || Date.now();
+            const reactionSecs = (Date.now() - qStart) / 1000;
+
+            // Log wrong buzz into gameHistory
+            db.ref("gameHistory").push({
+                game: "timeHop",
+                event: "buzz",
+                player: playerNameFound,
+                team: team,
+                reactionTime: reactionSecs,
+                correct: false, // 🚩 Wrong answer flag
+                timestamp: Date.now()
+            });
+
+            console.log(`Logged wrong buzz for ${playerNameFound} (${team}), reaction: ${reactionSecs.toFixed(3)}s`);
+        });
+    });
 }
+
 function resetGame() {
     if (confirm("Reset Time Hop Trivia? This clears all scores & buzzes.")) {
-        db.ref("timeHopTrivia").set({ currentQuestion: 1, buzzOrder: [], questionActive: false });
+        db.ref("timeHopTrivia").set({ currentQuestion: 1, buzzOrder: [], questionActive: false, questionStartTime: null });
         db.ref("teams").set({});
     }
 }
-// Live scores
+
+/* ===== Live Scores ===== */
 db.ref("teams").on("value", snap => {
     const teams = snap.val() || {};
     const tbody = document.getElementById("scoreTable");
@@ -142,17 +191,14 @@ db.ref("teams").on("value", snap => {
     });
 });
 
-// ---- Declare Winner ----
+/* ===== Declare Winner ===== */
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
-
   if (!winner) {
     alert("Please select a team to declare as winner!");
     return;
   }
-
-  const winsRef = db.ref('wins/' + winner);
-  winsRef.transaction(currentWins => (currentWins || 0) + 1)
+  db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
     .then(() => {
       alert(`${winner} wins this mini-game! 🏆`);
     })

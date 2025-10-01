@@ -1,0 +1,169 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>💰 Big Spender Award</title>
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 3s linear infinite;
+  z-index: 9999;
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.award-winner {
+  font-size: 2em;
+  font-weight: bold;
+  color: #a30000;
+  margin-top: 20px;
+  text-align: center;
+}
+.award-metric {
+  font-size: 1.2em;
+  margin-top: 10px;
+  color: #333;
+  text-align: center;
+}
+table {
+  margin: 20px auto;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+}
+th {
+  background: #d52b1e;
+  color: white;
+}
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<header class="awards-header">
+  <button class="back-btn" onclick="window.location.href='awards.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  💰 Big Spender
+</header>
+
+<div class="container">
+  <h2 style="text-align:center;">💰 Big Spender Award</h2>
+  <p style="text-align:center;">Highest single winning bid in the Auction Game!</p>
+
+  <!-- Winner Section -->
+  <div id="awardSection">
+    <div class="award-winner" id="winnerName">Loading...</div>
+    <div class="award-metric" id="winnerTeam"></div>
+    <div class="award-metric" id="winningBid"></div>
+  </div>
+
+  <!-- Scoreboard Section -->
+  <div id="scoreboardContainer">
+    <h3 style="text-align:center;">📊 Full Rankings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Team</th>
+          <th>Winning Bid ($)</th>
+        </tr>
+      </thead>
+      <tbody id="scoreboardBody" style="text-align:center;"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+db.ref("gameHistory")
+  .orderByChild("game").equalTo("auction")
+  .once("value")
+  .then(snap => {
+    let entries = [];
+    const data = snap.val() || {};
+
+    Object.values(data).forEach(entry => {
+      if (entry.event === "win" && entry.bidAmount != null) {
+        entries.push(entry);
+      }
+    });
+
+    console.log(entries); // Debug output
+
+    if (entries.length > 0) {
+      entries.sort((a, b) => b.bidAmount - a.bidAmount);
+      const highestBid = entries[0].bidAmount;
+      const winners = entries.filter(e => e.bidAmount === highestBid);
+
+      // Winner section
+      if (winners.length === 1) {
+        document.getElementById("winnerName").textContent = `🏆 ${winners[0].player || "Unknown"}`;
+        document.getElementById("winnerTeam").textContent = `Team: ${winners[0].team || "Unknown"}`;
+        document.getElementById("winningBid").textContent = `Winning Bid: $${highestBid}`;
+      } else {
+        const names = winners.map(w => `${w.player || "Unknown"} (${w.team || "Unknown"})`).join(" & ");
+        document.getElementById("winnerName").textContent = `🏆 ${names}`;
+        document.getElementById("winnerTeam").textContent = `Tie! ${highestBid} bid each`;
+        document.getElementById("winningBid").textContent = `Winning Bid: $${highestBid}`;
+      }
+
+      // Rankings table
+      const tbody = document.getElementById("scoreboardBody");
+      tbody.innerHTML = "";
+      entries.forEach((entry, index) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${entry.player || "Unknown"}</td>
+            <td>${entry.team || "Unknown"}</td>
+            <td>${entry.bidAmount}</td>
+          </tr>
+        `;
+      });
+
+      // Confetti
+      for (let i = 0; i < 50; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        c.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        c.style.animationDelay = Math.random() * 2 + 's';
+        document.body.appendChild(c);
+      }
+    } else {
+      document.getElementById("winnerName").textContent = "No data found";
+      document.getElementById("winnerTeam").textContent = "";
+      document.getElementById("winningBid").textContent = "";
+      document.getElementById("scoreboardBody").innerHTML = "";
+    }
+  });
+</script>
+
+</body>
+</html>

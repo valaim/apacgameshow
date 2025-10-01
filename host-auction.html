@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Auction Game - Host View</title>
+
+  <!-- ✅ Firebase SDKs First -->
   <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 
@@ -39,12 +41,7 @@
   
   <table>
     <thead>
-      <tr>
-        <th>Team</th>
-        <th>Bid ($)</th>
-        <th>Money ($)</th>
-        <th>Score</th>
-      </tr>
+      <tr><th>Team</th><th>Bid ($)</th><th>Money ($)</th><th>Score</th></tr>
     </thead>
     <tbody>
       <tr><td>Team 1</td><td id="bid-Team 1">0</td><td id="money-Team 1">1000</td><td id="score-Team 1">0</td></tr>
@@ -70,15 +67,14 @@
   </div>
 
   <button onclick="endRound()">🏁 End Round</button><br><br>
-  
+
   <input type="number" id="pointsInput" placeholder="Enter item points">
   <button onclick="applyPoints()">🎁 Apply Item Points</button><br><br>
-  
+
   <button onclick="resetGame()" class="reset-btn">♻ Reset Game</button>
 </div>
 
 <script>
-// Redirect if not authenticated
 document.addEventListener("DOMContentLoaded", () => {
     const loggedIn = sessionStorage.getItem("hostAuth");
     if (loggedIn !== "true") {
@@ -95,23 +91,25 @@ const firebaseConfig = {
   messagingSenderId: "572761881903",
   appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ---- Real-time Updates ----
+// Real-time UI Updates
 db.ref("auction/bids").on("value", snap => {
   const bids = snap.val() || {};
   Object.keys(bids).forEach(team => {
-    document.getElementById("bid-" + team).innerText = bids[team];
+    const el = document.getElementById("bid-" + team);
+    if (el) el.innerText = bids[team];
   });
 });
 
 db.ref("teams").on("value", snap => {
   const teams = snap.val() || {};
   Object.keys(teams).forEach(team => {
-    document.getElementById("money-" + team).innerText = teams[team].money;
-    document.getElementById("score-" + team).innerText = teams[team].score;
+    const moneyEl = document.getElementById("money-" + team);
+    const scoreEl = document.getElementById("score-" + team);
+    if (moneyEl) moneyEl.innerText = teams[team].money;
+    if (scoreEl) scoreEl.innerText = teams[team].score;
   });
 });
 
@@ -119,24 +117,20 @@ db.ref("auction/currentRound").on("value", snap => {
   document.getElementById("roundNum").innerText = snap.val();
 });
 
-// ---- Declare Mini‑Game Winner ----
+// Declare Mini‑Game Winner
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
   if (!winner) {
     alert("Please select a team to declare as winner!");
     return;
   }
-
   db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
     .then(() => {
       alert(`${winner} wins this mini-game! 🏆`);
-    })
-    .catch(error => {
-      console.error("Error updating winner:", error);
     });
 }
 
-// ---- End Round & Deduct only winner bid ----
+// End Round & log win with player name
 function endRound() {
   db.ref("auction/bids").once("value").then(snap => {
     const bids = snap.val() || {};
@@ -152,15 +146,39 @@ function endRound() {
       }
     });
 
-    // Deduct money only for the winning team(s)
+    if (winners.length === 0) {
+      alert("No bids placed this round.");
+      return;
+    }
+
     winners.forEach(team => {
       db.ref("teams/" + team + "/money").transaction(money => Math.max((money || 0) - highest, 0));
     });
 
-    // Record winner(s) for applying points
     db.ref("auction/currentRoundWinner").set(winners.join(" & "));
 
-    // Clear all bids for next round
+    winners.forEach(team => {
+      db.ref("gameHistory").orderByChild("team").equalTo(team).once("value").then(histSnap => {
+        let playerName = "Unknown";
+        let latestTime = 0;
+        histSnap.forEach(item => {
+          const val = item.val();
+          if (val.event === "bid" && val.bidAmount === highest && val.timestamp > latestTime) {
+            latestTime = val.timestamp;
+            playerName = val.player || "Unknown";
+          }
+        });
+        db.ref("gameHistory").push({
+          game: "auction",
+          event: "win",
+          player: playerName,
+          team: team,
+          bidAmount: highest,
+          timestamp: Date.now()
+        });
+      });
+    });
+
     Object.keys(bids).forEach(team => {
       db.ref("auction/bids/" + team).set(0);
     });
@@ -169,7 +187,7 @@ function endRound() {
   });
 }
 
-// ---- Apply Points to Current Round Winner(s) ----
+// Apply Points
 function applyPoints() {
   const points = parseInt(document.getElementById("pointsInput").value) || 0;
   db.ref("auction/currentRoundWinner").once("value").then(snap => {
@@ -179,23 +197,18 @@ function applyPoints() {
       return;
     }
     winners = winners.split("&").map(w => w.trim());
-
     winners.forEach(team => {
       db.ref("teams/" + team + "/score").transaction(score => (score || 0) + points);
     });
-
-    // Move to next round
     db.ref("auction/currentRound").transaction(r => (r || 1) + 1);
-    // Clear last round winner
     db.ref("auction/currentRoundWinner").set("");
     document.getElementById("pointsInput").value = "";
   });
 }
 
-// ---- Full Game Reset ----
+// Reset Game (Auction Only)
 function resetGame() {
-  if (!confirm("⚠ Are you sure you want to reset the whole game?")) return;
-
+  if (!confirm("⚠ Reset the whole auction game?")) return;
   const initialData = {
     teams: {
       "Team 1": { money: 1000, score: 0 },
@@ -216,11 +229,9 @@ function resetGame() {
       }
     }
   };
-
-  db.ref("/").update(initialData)
-    .then(() => alert("✅ Game reset successfully!"))
-    .catch(err => alert("❌ Error: " + err.message));
+  db.ref("/").update(initialData).then(() => alert("✅ Auction game reset successfully!"));
 }
 </script>
+
 </body>
 </html>

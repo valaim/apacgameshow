@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🔥 Most Active Team Award</title>
+<link rel="stylesheet" href="gameshow.css">
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<style>
+.confetti {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 3s linear infinite;
+  z-index: 9999;
+}
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10%) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+}
+.award-winner {
+  font-size: 2em;
+  font-weight: bold;
+  color: #a30000;
+  margin-top: 20px;
+  text-align: center;
+}
+.award-metric {
+  font-size: 1.2em;
+  margin-top: 10px;
+  text-align: center;
+}
+table {
+  margin: 20px auto;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+}
+th {
+  background: #d52b1e;
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<header class="awards-header">
+  <button class="back-btn" onclick="window.location.href='awards.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🔥 Most Active Team Award
+</header>
+
+<div class="container">
+  <h2 style="text-align:center;">🔥 Most Active Team Award</h2>
+  <p style="text-align:center;">Most buzzes in Hot Seat & Time Hop Trivia combined!</p>
+
+  <!-- Winner Section -->
+  <div id="awardSection">
+    <div class="award-winner" id="winnerName">Loading...</div>
+    <div class="award-metric" id="buzzCount"></div>
+  </div>
+
+  <!-- Scoreboard Section -->
+  <div id="scoreboardContainer">
+    <h3 style="text-align:center;">📊 Full Rankings</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Team</th>
+          <th>Buzzes</th>
+        </tr>
+      </thead>
+      <tbody id="scoreboardBody" style="text-align:center;"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+// ==== Firebase Config ====
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ==== Count buzzes across Hot Seat & Time Hop ====
+db.ref("gameHistory").once("value").then(snapshot => {
+    let counts = {};
+
+    snapshot.forEach(entry => {
+      const val = entry.val();
+      if (
+        val.event === "buzz" &&
+        (val.game === "hotSeat" || val.game === "timeHop") &&
+        val.team
+      ) {
+        counts[val.team] = (counts[val.team] || 0) + 1;
+      }
+    });
+
+    let sortedTeams = Object.keys(counts)
+        .map(team => ({ team, buzzCount: counts[team] }))
+        .sort((a, b) => b.buzzCount - a.buzzCount);
+
+    if (sortedTeams.length > 0) {
+      const maxBuzz = sortedTeams[0].buzzCount;
+      const winners = sortedTeams.filter(t => t.buzzCount === maxBuzz).map(t => t.team);
+
+      if (winners.length === 1) {
+        document.getElementById("winnerName").textContent = `🏆 ${winners[0]}`;
+        document.getElementById("buzzCount").textContent = `Buzzes: ${maxBuzz}`;
+      } else {
+        document.getElementById("winnerName").textContent = `🏆 ${winners.join(" & ")}`;
+        document.getElementById("buzzCount").textContent = `Tie! ${maxBuzz} buzzes each`;
+      }
+
+      // Populate full rankings table
+      const tbody = document.getElementById("scoreboardBody");
+      tbody.innerHTML = "";
+      sortedTeams.forEach((teamData, index) => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${teamData.team}</td>
+            <td>${teamData.buzzCount}</td>
+          </tr>
+        `;
+      });
+
+      // 🎉 Confetti
+      for (let i = 0; i < 50; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.backgroundColor = `hsl(${Math.random() * 360}, 70%, 60%)`;
+        c.style.animationDuration = (Math.random() * 3 + 2) + 's';
+        c.style.animationDelay = Math.random() * 2 + 's';
+        document.body.appendChild(c);
+      }
+    } else {
+      document.getElementById("winnerName").textContent = "No data found";
+      document.getElementById("buzzCount").textContent = "";
+      document.getElementById("scoreboardBody").innerHTML = "";
+    }
+});
+</script>
+
+</body>
+</html>
