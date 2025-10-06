@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Game Show - Test Zone</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Test CSS -->
+<link rel="stylesheet" href="test.css">
+
+<!-- Firebase Scripts -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script>
+// === Your Firebase Config ===
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+
+// === Initialize Firebase ===
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// === Local simulation ===
+function simulateFeature(featureName) {
+    const msgBox = document.getElementById("testOutput");
+    msgBox.innerHTML = `✅ <strong>${featureName}</strong> button clicked! Feature is working.`;
+    msgBox.style.display = "block";
+}
+
+// === Firebase Connection Test ===
+function testFirebaseConnection() {
+  const msgBox = document.getElementById("testOutput");
+  
+  // Write to a safe test area in DB
+  const time = new Date().toISOString();
+  db.ref('testZone/lastPing').set({
+    status: "ok",
+    time: time
+  }).then(() => {
+    msgBox.innerHTML = `✅ Firebase write succeeded at <strong>${time}</strong>`;
+    msgBox.style.background = "#e0ffe0";
+    msgBox.style.borderColor = "green";
+
+    // Read back
+    db.ref('testZone/lastPing').once('value').then(snap => {
+      const val = snap.val();
+      msgBox.innerHTML += `<br>📡 Read back from DB: <pre>${JSON.stringify(val, null, 2)}</pre>`;
+    });
+  }).catch(err => {
+    msgBox.innerHTML = `❌ Firebase connection failed: ${err.message}`;
+    msgBox.style.background = "#ffe0e0";
+    msgBox.style.borderColor = "red";
+  });
+
+  msgBox.style.display = "block";
+}
+</script>
+
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="alert('🔙 Back button works!')" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🧪 Test Zone
+</header>
+
+<div class="warning-banner">
+  ⚠ This is a <strong>Test Page</strong> — all actions here are demonstrations only.<br>
+  No real games are running.
+</div>
+
+<div class="container">
+  <h2>Test the Buttons</h2>
+  <p>Click any button to simulate its functionality or test Firebase connection.</p>
+
+  <div class="menu-container">
+    <button onclick="simulateFeature('Game 1')" class="menu-button">🎯 Game 1</button>
+    <button onclick="simulateFeature('Game 2')" class="menu-button">💬 Game 2</button>
+    <button onclick="simulateFeature('Game 3')" class="menu-button">🔥 Game 3</button>
+    <button onclick="simulateFeature('Game 4')" class="menu-button">🕵 Game 4</button>
+    <button onclick="simulateFeature('Scoreboard')" class="menu-button">📊 Scoreboard</button>
+    <button onclick="testFirebaseConnection()" class="menu-button">🌎 Test Firebase Connection</button>
+  </div>
+
+  <!-- Message output -->
+  <div id="testOutput" style="display:none; margin-top:20px; padding:15px; background:#e0ffe0; border:2px solid green; border-radius:8px; font-size:1.1em;">
+  </div>
+
+</div>
+
+</body>
+</html>

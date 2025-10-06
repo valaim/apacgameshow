@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Company Feud - Host</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Shared CSS -->
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+  /* Page-specific styles */
+  .action-btn {
+    background: #d52b1e;
+  }
+  .action-btn:hover {
+    background: #ff3b2e;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='host-menu.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  💬 Company Feud - Host View
+</header>
+
+<div class="container">
+  <h3>Current Question: <span id="questionNum">1</span></h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Answer</th>
+        <th>Submitted At</th>
+        <th>Rank</th>
+      </tr>
+    </thead>
+    <tbody id="answersTable"></tbody>
+  </table>
+
+  <div class="form-row">
+    <button class="action-btn" onclick="applyScores()">✅ Apply Scores</button>
+    <button class="action-btn" onclick="nextQuestion()">⏭ Next Question</button>
+    <button class="action-btn reset-btn" onclick="resetMiniGame()">♻ Reset Mini-Game</button>
+  </div>
+</div>
+
+<div class="container">
+  <h3>📊 Company Feud Scores</h3>
+  <table id="miniScoreTable">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Points</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+// Host auth check
+document.addEventListener("DOMContentLoaded", () => {
+    if (sessionStorage.getItem("hostAuth") !== "true") {
+        window.location.href = "host-menu.html";
+    }
+});
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const pointsMap = { 1: 50, 2: 40, 3: 30, 4: 20, 5: 10 };
+
+db.ref("companyFeud/currentQuestion").on("value", snap => {
+    document.getElementById("questionNum").innerText = snap.val() || 1;
+});
+
+// Show ordered answers
+db.ref("companyFeud/answers").on("value", snap => {
+    const answers = snap.val() || {};
+    let displayList = [];
+    Object.entries(answers).forEach(([team, guesses]) => {
+        if (Array.isArray(guesses)) {
+            guesses.forEach(g => {
+                displayList.push({ team, guess: g.guess, timestamp: g.timestamp || 0 });
+            });
+        }
+    });
+    displayList.sort((a,b) => a.timestamp - b.timestamp);
+
+    const tbody = document.getElementById("answersTable");
+    tbody.innerHTML = "";
+    displayList.forEach(data => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${data.team}</td>
+          <td>${data.guess}</td>
+          <td>${data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : ""}</td>
+          <td>
+            <select id="rank-${data.team}">
+              <option value="">--</option>
+              <option value="1">1st</option>
+              <option value="2">2nd</option>
+              <option value="3">3rd</option>
+              <option value="4">4th</option>
+              <option value="5">5th</option>
+            </select>
+          </td>
+        `;
+        tbody.appendChild(tr);
+    });
+});
+
+function applyScores() {
+    const awardedTeams = new Set();
+
+    db.ref("companyFeud/currentQuestion").once("value").then(qSnap => {
+        const currentQ = qSnap.val() || 1;
+
+        db.ref("companyFeud/answers").once("value").then(snap => {
+            const answers = snap.val() || {};
+
+            Object.keys(answers).forEach(team => {
+                if (!awardedTeams.has(team)) {
+                    const rank = parseInt(document.getElementById(`rank-${team}`).value);
+                    if (rank && pointsMap[rank]) {
+                        db.ref(`companyFeud/roundScores/${team}`).transaction(score => (score || 0) + pointsMap[rank]);
+                        db.ref(`teams/${team}/score`).transaction(score => (score || 0) + pointsMap[rank]);
+                        awardedTeams.add(team);
+                    }
+                }
+            });
+
+            if (currentQ === 4) {
+                db.ref("companyFeud/roundScores").once("value").then(rsSnap => {
+                    const scores = rsSnap.val() || {};
+                    let highestScore = 0;
+                    let gameWinners = [];
+
+                    Object.keys(scores).forEach(team => {
+                        if (scores[team] > highestScore) {
+                            highestScore = scores[team];
+                            gameWinners = [team];
+                        } else if (scores[team] === highestScore) {
+                            gameWinners.push(team);
+                        }
+                    });
+
+                    gameWinners.forEach(team => {
+                        db.ref(`wins/${team}`).transaction(val => (val || 0) + 1);
+                    });
+
+                    alert("🏆 Company Feud Mini‑Game Winner(s): " + gameWinners.join(", "));
+                });
+            }
+
+            alert("✅ Scores Applied!");
+        });
+    });
+}
+
+function nextQuestion() {
+    db.ref("companyFeud/currentQuestion").transaction(q => (q || 1) + 1);
+    db.ref("companyFeud/answers").set({});
+}
+
+function resetMiniGame() {
+    if (!confirm("⚠ Reset Company Feud scores and answers?")) return;
+    const resetScores = { "Team 1": 0, "Team 2": 0, "Team 3": 0, "Team 4": 0, "Team 5": 0 };
+    db.ref("companyFeud/roundScores").set(resetScores);
+    db.ref("companyFeud/answers").set({});
+    db.ref("companyFeud/currentQuestion").set(1);
+    alert("♻ Mini-game reset!");
+}
+
+db.ref("companyFeud/roundScores").on("value", snap => {
+    const scores = snap.val() || {};
+    const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
+    const tbody = document.querySelector("#miniScoreTable tbody");
+    tbody.innerHTML = "";
+    sorted.forEach(([team, score]) => {
+        const row = `<tr><td>${team}</td><td>${score}</td></tr>`;
+        tbody.innerHTML += row;
+    });
+});
+</script>
+
+</body>
+</html>

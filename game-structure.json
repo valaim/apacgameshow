@@ -1,0 +1,55 @@
+{
+  "teams": {
+    "Team 1": { "money": 1000, "score": 0 },
+    "Team 2": { "money": 1000, "score": 0 },
+    "Team 3": { "money": 1000, "score": 0 },
+    "Team 4": { "money": 1000, "score": 0 },
+    "Team 5": { "money": 1000, "score": 0 }
+  },
+  "auction": {
+    "currentRound": 1,
+    "currentRoundWinner": "",
+    "bids": {
+      "Team 1": 0,
+      "Team 2": 0,
+      "Team 3": 0,
+      "Team 4": 0,
+      "Team 5": 0
+    }
+  },
+  "companyFeud": {
+    "currentQuestion": 1,
+    "answers": {
+      "Team 1": { "guess": "", "timestamp": 0 },
+      "Team 2": { "guess": "", "timestamp": 0 },
+      "Team 3": { "guess": "", "timestamp": 0 },
+      "Team 4": { "guess": "", "timestamp": 0 },
+      "Team 5": { "guess": "", "timestamp": 0 }
+    },
+    "roundScores": {
+      "Team 1": 0,
+      "Team 2": 0,
+      "Team 3": 0,
+      "Team 4": 0,
+      "Team 5": 0
+    }
+  },
+  "hotSeat": {
+    "currentRound": 1,
+    "buzzOrder": [],
+    "roundActive": true,
+    "currentResponder": "",
+    "scoreAwarded": 0
+  },
+  "timeHopTrivia": {
+    "currentQuestion": 1,
+    "answers": {}
+  },
+  "wins": {
+    "Team 1": 0,
+    "Team 2": 0,
+    "Team 3": 0,
+    "Team 4": 0,
+    "Team 5": 0
+  }
+}

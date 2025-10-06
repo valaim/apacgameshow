@@ -1,0 +1,162 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auction Game - Participant</title>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="gameshow.css">
+</head>
+<body>
+
+<header>
+  <!-- Same arrow style as Company Feud -->
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🎯 Auction Game
+</header>
+
+<div class="container">
+  <div><strong>Round:</strong> <span id="roundNum">1</span></div>
+
+  <!-- Select your team row -->
+  <div class="team-select-row">
+    <label for="teamSelect">Select Your Team:</label>
+    <select id="teamSelect">
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+  </div>
+
+  <h2>Your Bid</h2>
+  <div class="form-row">
+    <input type="number" id="bidInput" placeholder="Enter your bid">
+    <button onclick="submitBid()">💸 Submit Bid</button>
+  </div>
+
+  <div class="status">💰 Money: <span id="remainingMoney">1000</span></div>
+  <div class="status">⭐ Score: <span id="totalScore">0</span></div>
+  <div class="status" id="statusMessage">⏳ Waiting for round to finish...</div>
+</div>
+
+<div class="container">
+  <h3>📊 Current Auction Leaderboard</h3>
+  <table id="auctionScoreboard">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Bid ($)</th>
+        <th>Money ($)</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let selectedTeam = document.getElementById('teamSelect').value;
+
+document.getElementById('teamSelect').addEventListener('change', function () {
+  selectedTeam = this.value;
+  listenToMyTeam();
+});
+
+function submitBid() {
+  const bid = parseFloat(document.getElementById('bidInput').value) || 0;
+  if (bid <= 0) {
+    alert("Enter a valid bid.");
+    return;
+  }
+  db.ref('teams/' + selectedTeam + '/money').once('value').then(snap => {
+    let money = snap.val() ?? 1000;
+    if (bid > money) {
+      alert("You don't have enough money for this bid!");
+      return;
+    }
+    db.ref('auction/bids/' + selectedTeam).set(bid);
+  });
+}
+
+function listenToMyTeam() {
+  db.ref('teams/' + selectedTeam).on('value', snapshot => {
+    const data = snapshot.val();
+    if (data) {
+      document.getElementById('remainingMoney').innerText = data.money ?? 1000;
+      document.getElementById('totalScore').innerText = data.score ?? 0;
+    }
+  });
+
+  db.ref('auction/currentRoundWinner').on('value', snapshot => {
+    const winner = snapshot.val();
+    if (winner) {
+      document.getElementById('statusMessage').innerText =
+        (winner.includes(selectedTeam)) ? "🎉 You won this round!" : "😢 You lost this round.";
+    }
+  });
+}
+
+db.ref('auction/currentRound').on('value', snap => {
+  document.getElementById('roundNum').innerText = snap.val() ?? 1;
+});
+
+function loadLeaderboard() {
+  db.ref('auction/bids').on('value', snapBids => {
+    db.ref('teams').once('value').then(snapTeams => {
+      const bids = snapBids.val() || {};
+      const teams = snapTeams.val() || {};
+
+      const tableData = Object.keys(teams).map(team => ({
+        team,
+        bid: bids[team] || 0,
+        money: teams[team].money || 0,
+        score: teams[team].score || 0
+      }));
+
+      tableData.sort((a, b) => b.score - a.score || b.money - a.money);
+
+      const tbody = document.querySelector("#auctionScoreboard tbody");
+      tbody.innerHTML = "";
+      tableData.forEach(row => {
+        tbody.innerHTML += `<tr>
+          <td>${row.team}</td>
+          <td>${row.bid}</td>
+          <td>${row.money}</td>
+          <td>${row.score}</td>
+        </tr>`;
+      });
+    });
+  });
+}
+
+listenToMyTeam();
+loadLeaderboard();
+</script>
+
+</body>
+</html>
