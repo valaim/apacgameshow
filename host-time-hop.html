@@ -52,7 +52,6 @@
     </table>
 </div>
 
-<!-- Winner Control -->
 <div class="container">
   <div class="winner-control">
     <label for="winnerSelect">Declare Mini‑Game Winner:</label>
@@ -108,6 +107,8 @@ function startQuestion() {
     const currentTime = Date.now();
     db.ref("timeHopTrivia").update({
         buzzOrder: [],
+        wrongTeams: [],
+        currentBuzz: null,
         questionActive: true,
         questionStartTime: currentTime
     });
@@ -116,17 +117,19 @@ function startQuestion() {
 
 function endQuestion() {
     db.ref("timeHopTrivia/questionActive").set(false);
+    console.log("Question ended - Buzzers OFF");
 }
 
 function nextQuestion() {
     db.ref("timeHopTrivia/currentQuestion").transaction(q => (q || 1) + 1);
-    const currentTime = Date.now();
     db.ref("timeHopTrivia").update({
         buzzOrder: [],
-        questionActive: true,
-        questionStartTime: currentTime
+        wrongTeams: [],
+        currentBuzz: null,
+        questionActive: false,
+        questionStartTime: null
     });
-    console.log("Moved to next question at:", currentTime);
+    console.log("Prepared next question - Buzzers still OFF");
 }
 
 function awardPoints(team) {
@@ -134,50 +137,72 @@ function awardPoints(team) {
     alert(`${team} gets 3 points!`);
 }
 
-/* 🆕 Updated markWrong to log for Trigger Happy Award */
 function markWrong(team) {
-    // Remove from buzz order
-    db.ref("timeHopTrivia/buzzOrder").once("value").then(snap => {
-        let order = snap.val() || [];
+    db.ref("timeHopTrivia/buzzOrder").once("value").then(bSnap => {
+        let order = bSnap.val() || [];
         order = order.filter(t => t !== team);
         db.ref("timeHopTrivia/buzzOrder").set(order);
+
+        // Add wrong team
+        db.ref("timeHopTrivia/wrongTeams").once("value").then(async wSnap => {
+            let wrongTeams = wSnap.val() || [];
+            if (!wrongTeams.includes(team)) wrongTeams.push(team);
+            await db.ref("timeHopTrivia/wrongTeams").set(wrongTeams);
+
+            // Check all-wrong condition
+            const teamsSnap = await db.ref("teams").once("value");
+            const allTeams = Object.keys(teamsSnap.val() || {});
+            const allBuzzed = [...new Set([...order, ...wrongTeams])];
+            const allWrong = allBuzzed.length > 0 && wrongTeams.length >= allBuzzed.length;
+
+            if (allWrong && allBuzzed.length < allTeams.length) {
+                // not all teams have played yet → still possible others buzz
+                console.log("Some teams haven't buzzed yet — waiting");
+            }
+            if (allWrong) {
+                alert("❌ All teams were wrong — buzzers re-opened!");
+                await db.ref("timeHopTrivia/wrongTeams").set([]);
+            }
+        });
     });
 
-    // Lookup player name by team from players list
+    // Log wrong buzz
     db.ref("players").once("value").then(pSnap => {
         let playerNameFound = "Unknown";
         const players = pSnap.val() || {};
-        Object.keys(players).forEach(key => {
-            if (players[key].team === team) {
-                playerNameFound = players[key].name;
-            }
+        Object.values(players).forEach(p => {
+            if (p.team === team) playerNameFound = p.name;
         });
 
-        // Get question start time to calculate reaction
         db.ref("timeHopTrivia/questionStartTime").once("value").then(qSnap => {
             const qStart = qSnap.val() || Date.now();
             const reactionSecs = (Date.now() - qStart) / 1000;
 
-            // Log wrong buzz into gameHistory
             db.ref("gameHistory").push({
                 game: "timeHop",
                 event: "buzz",
                 player: playerNameFound,
                 team: team,
                 reactionTime: reactionSecs,
-                correct: false, // 🚩 Wrong answer flag
+                correct: false,
                 timestamp: Date.now()
             });
-
-            console.log(`Logged wrong buzz for ${playerNameFound} (${team}), reaction: ${reactionSecs.toFixed(3)}s`);
         });
     });
 }
 
 function resetGame() {
-    if (confirm("Reset Time Hop Trivia? This clears all scores & buzzes.")) {
-        db.ref("timeHopTrivia").set({ currentQuestion: 1, buzzOrder: [], questionActive: false, questionStartTime: null });
+    if (confirm("Reset Time Hop Trivia? This clears all scores & buzz orders.")) {
+        db.ref("timeHopTrivia").set({
+            currentQuestion: 1,
+            buzzOrder: [],
+            wrongTeams: [],
+            currentBuzz: null,
+            questionActive: false,
+            questionStartTime: null
+        });
         db.ref("teams").set({});
+        db.ref("resetFlags/gameReset").set(Date.now());
     }
 }
 
@@ -191,7 +216,6 @@ db.ref("teams").on("value", snap => {
     });
 });
 
-/* ===== Declare Winner ===== */
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
   if (!winner) {
@@ -207,6 +231,5 @@ function declareWinner() {
     });
 }
 </script>
-
 </body>
 </html>

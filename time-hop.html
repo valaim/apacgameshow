@@ -6,22 +6,60 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
-
 <style>
 #registrationSection { margin-bottom: 20px; }
 .gameplaySection { display: none; }
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
-.switch-btn {
-  background: #f44336;
-  color: white;
-  padding: 5px 10px;
-  border: none;
-  cursor: pointer;
-  border-radius: 5px;
+.switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
+
+/* Countdown badge styles */
+#countdownWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
   margin-top: 8px;
+}
+#countdownDisplay {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 1.6em;
+  font-weight: bold;
+  color: #fff;
+  background: radial-gradient(circle at center, #ff3b2e, #a30000);
+  width: 50px;
+  height: 50px;
+  line-height: 50px;
+  border-radius: 50%;
+  text-align: center;
+  box-shadow: 0 0 8px rgba(255,0,0,0.6);
+  animation: pulseCountdown 1s infinite;
+}
+@keyframes pulseCountdown {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+#countdownDisplay.low-time {
+  background: radial-gradient(circle at center, #ff0000, #800000);
+  color: #FFD700;
+  animation: pulseCountdownFast 0.5s infinite;
+}
+@keyframes pulseCountdownFast {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+#countdownDisplay.stopped {
+  animation: none !important;
+  background: grey;
+  color: white;
+  box-shadow: none;
+}
+.countdownLabel {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #a30000;
 }
 </style>
 </head>
@@ -37,7 +75,6 @@
   🕵 Time Hop Trivia
 </header>
 
-<!-- Registration Section -->
 <div class="container" id="registrationSection">
   <h3>👤 Player Registration</h3>
   <input type="text" id="playerName" placeholder="Enter your name">
@@ -54,16 +91,20 @@
   <button onclick="registerInline()">✅ Join Game</button>
 </div>
 
-<!-- Gameplay Section -->
 <div class="container gameplaySection">
     <div id="playerInfo"></div>
     <button class="switch-btn" onclick="switchPlayer()">🔄 Switch Player</button>
     <h3>Question: <span id="questionNum">1</span></h3>
     <p id="statusMsg">Waiting for the question to start...</p>
     <button id="buzzBtn" onclick="buzz()">🚨 Buzz In!</button>
+
+    <!-- Countdown -->
+    <div id="countdownWrapper">
+      <div id="countdownDisplay" class="countdown-timer"></div>
+      <span class="countdownLabel">seconds left to answer</span>
+    </div>
 </div>
 
-<!-- Leaderboard -->
 <div class="container gameplaySection">
     <h3>📊 Leaderboard</h3>
     <table>
@@ -88,8 +129,10 @@ const db = firebase.database();
 let selectedTeam = null;
 let playerName = null;
 let questionStartTime = null;
+let countdownInterval = null;
+let timerExpired = false;
 
-// Listen for host registration reset
+// Reset registration if host triggers
 db.ref("resetFlags/registrationReset").on("value", snapshot => {
   const flag = snapshot.val();
   const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
@@ -101,18 +144,14 @@ db.ref("resetFlags/registrationReset").on("value", snapshot => {
   }
 });
 
-// Restore player but check existence in Firebase
 document.addEventListener("DOMContentLoaded", () => {
   const storedName = sessionStorage.getItem("playerName");
   const storedTeam = sessionStorage.getItem("playerTeam");
-
   if (storedName && storedTeam) {
     db.ref('players').once('value').then(snapshot => {
       const players = snapshot.val() || {};
       const exists = Object.values(players).some(p =>
-        p.name && p.team &&
-        p.name.toLowerCase() === storedName.toLowerCase() &&
-        p.team === storedTeam
+        p.name && p.team && p.name.toLowerCase() === storedName.toLowerCase() && p.team === storedTeam
       );
       if (exists) {
         playerName = storedName;
@@ -128,7 +167,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// Switch Player
 function switchPlayer() {
   sessionStorage.removeItem("playerName");
   sessionStorage.removeItem("playerTeam");
@@ -138,15 +176,10 @@ function switchPlayer() {
   document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'none');
 }
 
-// Registration
 function registerInline() {
   const nameVal = document.getElementById('playerName').value.trim();
   const teamVal = document.getElementById('teamSelectReg').value;
-
-  if (!nameVal || !teamVal) {
-    alert("Please enter your name and select your team.");
-    return;
-  }
+  if (!nameVal || !teamVal) { alert("Please enter your name and select your team."); return; }
 
   playerName = nameVal;
   selectedTeam = teamVal;
@@ -154,42 +187,80 @@ function registerInline() {
   db.ref('players').once('value').then(snapshot => {
     const players = snapshot.val() || {};
     const exists = Object.values(players).some(p =>
-      p.name && p.team &&
-      p.name.toLowerCase() === playerName.toLowerCase() &&
-      p.team === selectedTeam
+      p.name && p.team && p.name.toLowerCase() === playerName.toLowerCase() && p.team === selectedTeam
     );
-    if (!exists) {
-      db.ref('players').push({ name: playerName, team: selectedTeam });
-    }
-
+    if (!exists) db.ref('players').push({ name: playerName, team: selectedTeam });
     sessionStorage.setItem("playerName", playerName);
     sessionStorage.setItem("playerTeam", selectedTeam);
-
     document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
     document.getElementById('registrationSection').style.display = 'none';
     document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
-
     initGameListeners();
   });
 }
 
-// Game Listeners
 function initGameListeners() {
+  // Question number
   db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
       document.getElementById("questionNum").innerText = snap.val() || 1;
   });
 
-  db.ref("timeHopTrivia/questionStartTime").on("value", snap => {
-      questionStartTime = snap.val() || null;
-  });
-
+  // Reset wrong/expired at start
   db.ref("timeHopTrivia/questionActive").on("value", snap => {
-      const active = snap.val();
-      document.getElementById("buzzBtn").disabled = !active;
-      document.getElementById("statusMsg").innerText = active ?
-          "Question active! Buzz to answer!" : "Waiting for the next question...";
+    const active = snap.val();
+    if (active) {
+      timerExpired = false;
+      document.getElementById("buzzBtn").disabled = false;
+      document.getElementById("countdownDisplay").innerText = "";
+      document.getElementById("statusMsg").innerText = "Question active! BUZZ to answer!";
+    } else {
+      document.getElementById("buzzBtn").disabled = true;
+      document.getElementById("statusMsg").innerText = "Waiting for the next question...";
+    }
   });
 
+  // Disable by default when inactive
+  db.ref("timeHopTrivia").on("value", snap => {
+    const state = snap.val() || {};
+    const active = state.questionActive || false;
+    const wrongTeams = state.wrongTeams || [];
+    if (active) {
+      if (!timerExpired && !wrongTeams.includes(selectedTeam)) {
+        document.getElementById("buzzBtn").disabled = false;
+      }
+      document.getElementById("statusMsg").innerText = "Question active! BUZZ to answer!";
+    } else {
+      document.getElementById("buzzBtn").disabled = true;
+      document.getElementById("statusMsg").innerText = "Waiting for the next question...";
+    }
+  });
+
+  // All teams wrong → reopen buzzers
+  db.ref("timeHopTrivia/wrongTeams").on("value", async snap => {
+    const wrongTeams = snap.val() || [];
+    const activeSnap = await db.ref("timeHopTrivia/questionActive").once("value");
+    const active = activeSnap.val();
+
+    if (active) {
+      const teamsSnap = await db.ref("teams").once("value");
+      const allTeams = Object.keys(teamsSnap.val() || {});
+
+      const buzzSnap = await db.ref("timeHopTrivia/buzzOrder").once("value");
+      const allBuzzedTeams = buzzSnap.val() || [];
+
+      const allAnswered = [...new Set([...allBuzzedTeams, ...wrongTeams])];
+      const allWrong = allAnswered.length > 0 && wrongTeams.length >= allAnswered.length;
+
+      if (allWrong) {
+        timerExpired = false;
+        document.getElementById("buzzBtn").disabled = false;
+        document.getElementById("countdownDisplay").innerText = "";
+        document.getElementById("statusMsg").innerText = "All teams wrong — buzzers reopened!";
+      }
+    }
+  });
+
+  // Leaderboard
   db.ref("teams").on("value", snap => {
       const teams = snap.val() || {};
       const tbody = document.getElementById("scoreTable");
@@ -199,34 +270,89 @@ function initGameListeners() {
           tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
       });
   });
+
+  // Show countdown if your team buzzes
+  db.ref("timeHopTrivia/currentBuzz").on("value", snap => {
+    const data = snap.val();
+    if (data && data.team === selectedTeam) {
+      startSharedCountdown(data.startTime, data.duration);
+    }
+  });
+
+  // Game reset
+  db.ref("resetFlags/gameReset").on("value", snap => {
+    if (snap.val()) {
+      timerExpired = false;
+      document.getElementById("buzzBtn").disabled = true;
+      document.getElementById("countdownDisplay").innerText = "";
+    }
+  });
 }
 
-// Buzz function
 function buzz() {
-    const orderRef = db.ref("timeHopTrivia/buzzOrder");
-    orderRef.once("value").then(snap => {
-        let order = snap.val() || [];
-        if (!order.includes(selectedTeam)) {
-            order.push(selectedTeam);
-            orderRef.set(order);
+    db.ref("timeHopTrivia/wrongTeams").once("value").then(wSnap => {
+      const wrongTeams = wSnap.val() || [];
+      db.ref("timeHopTrivia/buzzOrder").once("value").then(bSnap => {
+        const buzzOrder = bSnap.val() || [];
+        const allBuzzedTeams = [...buzzOrder, ...wrongTeams].filter((t,i,a) => a.indexOf(t)===i);
+        const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allBuzzedTeams.length;
 
-            let reactionSecs = 0;
-            if (questionStartTime) {
-                reactionSecs = (Date.now() - questionStartTime) / 1000;
-            }
-
-            db.ref("gameHistory").push({
-                game: "timeHop",
-                event: "buzz",
-                player: playerName || "Unknown",
-                team: selectedTeam,
-                reactionTime: reactionSecs,
-                timestamp: Date.now()
-            });
+        if (wrongTeams.includes(selectedTeam) && !allWrong) {
+          alert("⛔ Your team already answered wrong this question.");
+          return;
         }
+
+        if (!buzzOrder.includes(selectedTeam)) {
+          buzzOrder.push(selectedTeam);
+          db.ref("timeHopTrivia/buzzOrder").set(buzzOrder);
+
+          let reactionSecs = questionStartTime ? (Date.now() - questionStartTime) / 1000 : 0;
+
+          db.ref("gameHistory").push({
+              game: "timeHop",
+              event: "buzz",
+              player: playerName || "Unknown",
+              team: selectedTeam,
+              reactionTime: reactionSecs,
+              timestamp: Date.now()
+          });
+
+          db.ref("timeHopTrivia/currentBuzz").set({
+              team: selectedTeam,
+              startTime: Date.now(),
+              duration: 5
+          });
+
+          startSharedCountdown(Date.now(), 5);
+        }
+      });
     });
 }
-</script>
 
+function startSharedCountdown(startTime, duration) {
+  clearInterval(countdownInterval);
+  timerExpired = false;
+  const countdownDisplay = document.getElementById("countdownDisplay");
+
+  countdownInterval = setInterval(() => {
+    let elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let remaining = duration - elapsed;
+
+    if (remaining > 0) {
+      countdownDisplay.innerText = remaining;
+      countdownDisplay.classList.toggle("low-time", remaining <= 3);
+      countdownDisplay.classList.remove("stopped");
+    } else {
+      countdownDisplay.innerText = "❌";
+      countdownDisplay.classList.remove("low-time");
+      countdownDisplay.classList.add("stopped");
+      clearInterval(countdownInterval);
+      timerExpired = true;
+      document.getElementById("buzzBtn").disabled = true;
+      db.ref(`timeHopTrivia/timeUp/${selectedTeam}`).set(Date.now());
+    }
+  }, 250);
+}
+</script>
 </body>
 </html>
