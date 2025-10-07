@@ -6,8 +6,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-
-<!-- Shared CSS -->
 <link rel="stylesheet" href="gameshow.css">
 
 <style>
@@ -75,6 +73,168 @@
 </div>
 
 <script>
+// ==================== 📋 QUESTIONS & ANSWERS ====================
+const answers = {
+  // Question 1 – grouped-shared (TSMs)
+  1: {
+    type: "grouped-shared",
+    answers: {
+      "Group 1": [
+        "Manish Nagpal",
+        "Kang Min Kim",
+        "Jackael Lv",
+        "Koeun Chung",
+        "Bimal Balakrishnan"
+      ],
+      "Group 2": [
+        "Manish Nagpal",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Koeun Chung",
+        "Kang Min Kim"
+      ],
+      "Group 3": [
+        "Kang Min Kim",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Koeun Chung",
+        "Bimal Balakrishnan"
+      ],
+      "Group 4": [
+        "Manish Nagpal",
+        "Kang Min Kim",
+        "Koeun Chung",
+        "Bimal Balakrishnan",
+        "Percival Lawrence Ramos"
+      ],
+      "Group 5": [
+        "Manish Nagpal",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Kang Min Kim",
+        "Bimal Balakrishnan"
+      ]
+    }
+  },
+
+  // Question 2 – grouped-shared (Product Models)
+  2: {
+    type: "grouped-shared",
+    answers: {
+      "Desktop/Laptop": [
+        "Apple",
+        "Dell",
+        "ExacqVision",
+        "HP",
+        "Kingwin",
+        "Lenovo",
+        "Microsoft",
+        "Zebra"
+      ],
+      "Mobile": [
+        "Apple",
+        "Blackview",
+        "Cat",
+        "i.safe MOBILE",
+        "Samsung"
+      ],
+      "Tablet": [
+        "Apple",
+        "Bartec",
+        "Getac",
+        "Honeywell",
+        "Lenovo",
+        "Microsoft",
+        "Samsung"
+      ]
+    }
+  },
+
+  // Question 3 – shared (Coca-Cola Brands Active in APAC)
+  3: {
+    type: "shared",
+    answers: [
+      "AdeS (soy-based beverages)",
+      "Aquarius",
+      "Ayataka green tea",
+      "Costa Coffee",
+      "Dasani waters",
+      "Del Valle juices and nectars",
+      "Fairlife",
+      "Fanta",
+      "Fuze Tea",
+      "Georgia coffee",
+      "Gold Peak teas and coffees",
+      "ILOHAS",
+      "Minute Maid juices",
+      "Powerade sports drinks",
+      "Simply juices and Simply Spiked",
+      "Schweppes",
+      "smartwater",
+      "Sprite",
+      "Topo Chico waters and hard seltzers",
+      "vitaminwater"
+    ]
+  },
+
+  // Question 4 – grouped-shared (Minute Maid juices)
+  4: {
+    type: "grouped-shared",
+    answers: {
+      "ASP": [
+        "Pooja Poornam Manivannan [C]",
+        "Naufal Ilham",
+        "Mark Rommel Manuntag",
+        "Giritharan Aanantharaj [C]",
+        "Elaine Ravelo",
+        "Fakrunizam Bin Mohd Zulkefeli [C]",
+        "Dianne Mae Czarina Mansos Condes",
+        "Jean Caviar",
+        "Shamin Bin Ismail",
+        "Mia Gregorio",
+        "Avinash Gadi",
+        "Manjinder Singh Mankoo [C]",
+        "Srinivasu Reddy Vengkatesan [C]",
+        "Jumpol Pangthong",
+        "Chanaphol Wiboonsook [C]",
+        "Thong Quoc Nguyen [C]",
+        "Merorl Canindo",
+        "Esa Andikashwara",
+        "Cheryl Hernandez"
+      ],
+      "INSWA": [
+        "Vishal Tiwari",
+        "Ajay Singh",
+        "Chandan Sharma",
+        "Piyush Singh [C]",
+        "Manish Nagpal"
+      ],
+      "GCM": [
+        "Maison He",
+        "Hong Xiao",
+        "Feijun Zhao",
+        "Leon Lei Xiao",
+        "Ken Cui",
+        "Ethan Hu [C]",
+        "Angel Lu",
+        "Cast Ke",
+        "James SIT [C]"
+      ],
+      "JSK": [
+        "Kentaro Shiozaki",
+        "Jiho Kim",
+        "Martin Macario [C]",
+        "Shunya Watanabe [C]",
+        "Ui Ishigami",
+        "Kazuki Fukazawa",
+        "Nadya Lesnik [C]"
+      ]
+    }
+  }
+};
+
+// ==================== 🔥 FIREBASE + GAME LOGIC ====================
+
 // Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
@@ -190,27 +350,20 @@ function awardPoints(team) {
 }
 
 function markWrong(team) {
-    // Remove team from buzzOrder
     db.ref("hotSeat/buzzOrder").once("value").then(async bSnap => {
         let buzzOrder = bSnap.val() || [];
         buzzOrder = buzzOrder.filter(t => t !== team);
         await db.ref("hotSeat/buzzOrder").set(buzzOrder);
-
-        // Add to wrongTeams
         const wSnap = await db.ref("hotSeat/wrongTeams").once("value");
         let wrongTeams = wSnap.val() || [];
         if (!wrongTeams.includes(team)) {
             wrongTeams.push(team);
         }
         await db.ref("hotSeat/wrongTeams").set(wrongTeams);
-
-        // Check if all buzzed teams are wrong
         const allBuzzedTeams = [...buzzOrder, ...wrongTeams].filter((t, i, arr) => arr.indexOf(t) === i);
         const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allBuzzedTeams.length;
-
         if (allWrong) {
             alert("❌ All teams were wrong — buzzers reopened!");
-            // Clear wrongTeams so participant buzzers re-enable
             await db.ref("hotSeat/wrongTeams").set([]);
         }
     });
@@ -231,7 +384,6 @@ function resetGame() {
     }
 }
 
-// Scores table
 db.ref("teams").on("value", snap => {
     const teams = snap.val() || {};
     const tbody = document.getElementById("scoreTable");

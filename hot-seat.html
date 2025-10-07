@@ -13,7 +13,6 @@
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
 .switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
 
-/* Countdown badge styles */
 #countdownWrapper {
   display: flex;
   align-items: center;
@@ -128,7 +127,7 @@ const db = firebase.database();
 
 let selectedTeam = null;
 let playerName = null;
-let roundStartTime = null;
+let roundStartTime = null; // ✅ track round start time
 let countdownInterval = null;
 let timerExpired = false;
 
@@ -205,9 +204,19 @@ function initGameListeners() {
       document.getElementById("roundNum").innerText = snap.val() || 1;
   });
 
+  db.ref("hotSeat/roundStartTime").on("value", snap => {
+      const val = snap.val();
+      if (val) {
+          roundStartTime = val;
+      }
+  });
+
   db.ref("hotSeat/roundActive").on("value", snap => {
     const active = snap.val();
     if (active) {
+      if (!roundStartTime) {
+        roundStartTime = Date.now();
+      }
       timerExpired = false;
       document.getElementById("buzzBtn").disabled = false;
       document.getElementById("countdownDisplay").innerText = "";
@@ -224,10 +233,8 @@ function initGameListeners() {
     const active = activeSnap.val();
 
     if (active) {
-      const teamsSnap = await db.ref("teams").once("value");
       const buzzSnap = await db.ref("hotSeat/buzzOrder").once("value");
       const allBuzzedTeams = buzzSnap.val() || [];
-
       const allAnswered = [...new Set([...allBuzzedTeams, ...wrongTeams])];
       const allWrong = allAnswered.length > 0 && wrongTeams.length >= allAnswered.length;
 
@@ -272,7 +279,7 @@ function buzz() {
       db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
         const buzzOrder = bSnap.val() || [];
         const allBuzzedTeams = [...buzzOrder, ...wrongTeams].filter((t,i,a) => a.indexOf(t)===i);
-        const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allBuzzedTeams.length;
+        const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allAnswered.length;
 
         if (wrongTeams.includes(selectedTeam) && !allWrong) {
           alert("⛔ Your team already answered wrong this round.");
@@ -285,11 +292,15 @@ function buzz() {
 
           let reactionSecs = roundStartTime ? (Date.now() - roundStartTime) / 1000 : 0;
 
+          // ✅ NEW: record the current round number for awards dedupe
+          let currentRoundNum = Number(document.getElementById("roundNum").innerText) || null;
+
           db.ref("gameHistory").push({
               game: "hotSeat",
               event: "buzz",
               player: playerName || "Unknown",
               team: selectedTeam,
+              round: currentRoundNum,   // added property
               reactionTime: reactionSecs,
               timestamp: Date.now()
           });

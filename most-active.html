@@ -102,15 +102,32 @@ const db = firebase.database();
 // ==== Count buzzes across Hot Seat & Time Hop ====
 db.ref("gameHistory").once("value").then(snapshot => {
     let counts = {};
+    let seen = new Set(); // store unique (team, game, round/question)
 
     snapshot.forEach(entry => {
       const val = entry.val();
+
       if (
         val.event === "buzz" &&
         (val.game === "hotSeat" || val.game === "timeHop") &&
         val.team
       ) {
-        counts[val.team] = (counts[val.team] || 0) + 1;
+        let key;
+        if (val.game === "hotSeat") {
+          // use stored round field - fall back to timestamp second if missing
+          key = `${val.team}-hotSeat-round${val.round != null ? val.round : Math.floor(val.timestamp/1000)}`;
+        } else if (val.game === "timeHop") {
+          // use stored question field
+          key = `${val.team}-timeHop-q${val.question != null ? val.question : Math.floor(val.timestamp/1000)}`;
+        } else {
+          // shouldn't happen
+          key = `${val.team}-${val.game}-${Math.floor(val.timestamp/1000)}`;
+        }
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          counts[val.team] = (counts[val.team] || 0) + 1;
+        }
       }
     });
 
@@ -130,7 +147,6 @@ db.ref("gameHistory").once("value").then(snapshot => {
         document.getElementById("buzzCount").textContent = `Tie! ${maxBuzz} buzzes each`;
       }
 
-      // Populate full rankings table
       const tbody = document.getElementById("scoreboardBody");
       tbody.innerHTML = "";
       sortedTeams.forEach((teamData, index) => {

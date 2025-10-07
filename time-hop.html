@@ -13,7 +13,6 @@
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
 .switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
 
-/* Countdown badge styles */
 #countdownWrapper {
   display: flex;
   align-items: center;
@@ -132,7 +131,6 @@ let questionStartTime = null;
 let countdownInterval = null;
 let timerExpired = false;
 
-// Reset registration if host triggers
 db.ref("resetFlags/registrationReset").on("value", snapshot => {
   const flag = snapshot.val();
   const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
@@ -200,15 +198,23 @@ function registerInline() {
 }
 
 function initGameListeners() {
-  // Question number
   db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
       document.getElementById("questionNum").innerText = snap.val() || 1;
   });
 
-  // Reset wrong/expired at start
+  db.ref("timeHopTrivia/questionStartTime").on("value", snap => {
+      const val = snap.val();
+      if (val) {
+          questionStartTime = val;
+      }
+  });
+
   db.ref("timeHopTrivia/questionActive").on("value", snap => {
     const active = snap.val();
     if (active) {
+      if (!questionStartTime) {
+        questionStartTime = Date.now();
+      }
       timerExpired = false;
       document.getElementById("buzzBtn").disabled = false;
       document.getElementById("countdownDisplay").innerText = "";
@@ -219,23 +225,6 @@ function initGameListeners() {
     }
   });
 
-  // Disable by default when inactive
-  db.ref("timeHopTrivia").on("value", snap => {
-    const state = snap.val() || {};
-    const active = state.questionActive || false;
-    const wrongTeams = state.wrongTeams || [];
-    if (active) {
-      if (!timerExpired && !wrongTeams.includes(selectedTeam)) {
-        document.getElementById("buzzBtn").disabled = false;
-      }
-      document.getElementById("statusMsg").innerText = "Question active! BUZZ to answer!";
-    } else {
-      document.getElementById("buzzBtn").disabled = true;
-      document.getElementById("statusMsg").innerText = "Waiting for the next question...";
-    }
-  });
-
-  // All teams wrong → reopen buzzers
   db.ref("timeHopTrivia/wrongTeams").on("value", async snap => {
     const wrongTeams = snap.val() || [];
     const activeSnap = await db.ref("timeHopTrivia/questionActive").once("value");
@@ -243,8 +232,6 @@ function initGameListeners() {
 
     if (active) {
       const teamsSnap = await db.ref("teams").once("value");
-      const allTeams = Object.keys(teamsSnap.val() || {});
-
       const buzzSnap = await db.ref("timeHopTrivia/buzzOrder").once("value");
       const allBuzzedTeams = buzzSnap.val() || [];
 
@@ -260,7 +247,6 @@ function initGameListeners() {
     }
   });
 
-  // Leaderboard
   db.ref("teams").on("value", snap => {
       const teams = snap.val() || {};
       const tbody = document.getElementById("scoreTable");
@@ -271,7 +257,6 @@ function initGameListeners() {
       });
   });
 
-  // Show countdown if your team buzzes
   db.ref("timeHopTrivia/currentBuzz").on("value", snap => {
     const data = snap.val();
     if (data && data.team === selectedTeam) {
@@ -279,7 +264,6 @@ function initGameListeners() {
     }
   });
 
-  // Game reset
   db.ref("resetFlags/gameReset").on("value", snap => {
     if (snap.val()) {
       timerExpired = false;
@@ -308,11 +292,15 @@ function buzz() {
 
           let reactionSecs = questionStartTime ? (Date.now() - questionStartTime) / 1000 : 0;
 
+          // ✅ NEW: get current question number
+          let currentQuestionNum = Number(document.getElementById("questionNum").innerText) || null;
+
           db.ref("gameHistory").push({
               game: "timeHop",
               event: "buzz",
               player: playerName || "Unknown",
               team: selectedTeam,
+              question: currentQuestionNum, // ✅ added for award dedupe
               reactionTime: reactionSecs,
               timestamp: Date.now()
           });

@@ -113,12 +113,24 @@ db.ref("gameHistory")
       }
     });
 
-    console.log(entries); // Debug output
-
     if (entries.length > 0) {
+      // Sort highest bid first
       entries.sort((a, b) => b.bidAmount - a.bidAmount);
       const highestBid = entries[0].bidAmount;
-      const winners = entries.filter(e => e.bidAmount === highestBid);
+
+      // Get all entries matching highest bid
+      const tiedWinners = entries.filter(e => e.bidAmount === highestBid);
+
+      // ✅ Deduplicate winners by player+team
+      const seen = new Set();
+      const winners = [];
+      tiedWinners.forEach(w => {
+        const key = `${(w.player || "").toLowerCase()}-${w.team || ""}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          winners.push(w);
+        }
+      });
 
       // Winner section
       if (winners.length === 1) {
@@ -132,7 +144,7 @@ db.ref("gameHistory")
         document.getElementById("winningBid").textContent = `Winning Bid: $${highestBid}`;
       }
 
-      // Rankings table
+      // Rankings table (shows all win events)
       const tbody = document.getElementById("scoreboardBody");
       tbody.innerHTML = "";
       entries.forEach((entry, index) => {
