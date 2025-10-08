@@ -12,6 +12,7 @@
 .gameplaySection { display: none; }
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
 .switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
+
 #countdownWrapper {
   display: flex;
   align-items: center;
@@ -265,23 +266,24 @@ function initGameListeners() {
   });
 }
 
-// ✅ Fixed buzz() with Time Hop logic
+// ✅ Fixed buzz() using Firebase transaction for atomic multi-press handling
 function buzz() {
   db.ref("hotSeat/wrongTeams").once("value").then(wSnap => {
     const wrongTeams = wSnap.val() || [];
-    db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
-      const buzzOrder = bSnap.val() || [];
+    db.ref("hotSeat/buzzOrder").transaction(currentOrder => {
+      let buzzOrder = currentOrder || [];
       const allAnswered = [...new Set([...buzzOrder, ...wrongTeams])];
       const allWrong = allAnswered.length > 0 && wrongTeams.length >= allAnswered.length;
 
+      // Block if team already wrong and buzzers not reopened
       if (wrongTeams.includes(selectedTeam) && !allWrong) {
         alert("⛔ Your team already answered wrong this round.");
-        return;
+        return buzzOrder; // no changes
       }
 
+      // Add team if they haven't buzzed in current buzzer open cycle
       if (!buzzOrder.includes(selectedTeam)) {
         buzzOrder.push(selectedTeam);
-        db.ref("hotSeat/buzzOrder").set(buzzOrder);
 
         let reactionSecs = roundStartTime ? (Date.now() - roundStartTime) / 1000 : 0;
         let currentRoundNum = Number(document.getElementById("roundNum").innerText) || null;
@@ -304,6 +306,7 @@ function buzz() {
 
         startSharedCountdown(Date.now(), 5);
       }
+      return buzzOrder;
     });
   });
 }
