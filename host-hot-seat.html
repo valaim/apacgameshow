@@ -99,9 +99,35 @@ const answers = {
   },
   // Question 2 – grouped-shared (Product Models)
   2: { type: "grouped-shared", /* ... unchanged ... */ },
-  // Question 3 – shared (Coca-Cola Brands Active in APAC)
-  3: { type: "shared", /* ... unchanged ... */ },
-  // Question 4 – grouped-shared (Minute Maid juices)
+
+  // ✅ Question 3 – shared (Coca-Cola Brands Active in APAC)
+  3: {
+    type: "shared",
+    answers: [
+      "AdeS (soy-based beverages)",
+      "Aquarius",
+      "Ayataka green tea",
+      "Costa Coffee",
+      "Dasani waters",
+      "Del Valle juices and nectars",
+      "Fairlife",
+      "Fanta",
+      "Fuze Tea",
+      "Georgia coffee",
+      "Gold Peak teas and coffees",
+      "ILOHAS",
+      "Minute Maid juices",
+      "Powerade sports drinks",
+      "Simply juices and Simply Spiked",
+      "Schweppes",
+      "smartwater",
+      "Sprite",
+      "Topo Chico waters and hard seltzers",
+      "vitaminwater"
+    ]
+  },
+
+  // Question 4 – grouped-shared (OUs)
   4: { type: "grouped-shared", /* ... unchanged ... */ }
 };
 
@@ -220,7 +246,6 @@ function awardPoints(team) {
     alert(`${team} gets 3 points!`);
 }
 
-// ✅ Time Hop style markWrong
 function markWrong(team) {
     db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
         const order = bSnap.val() || [];
