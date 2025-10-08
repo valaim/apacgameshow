@@ -13,7 +13,6 @@
 <link rel="stylesheet" href="gameshow.css">
 
 <style>
-  /* Page-specific styles */
   .action-btn {
     background: #d52b1e;
   }
@@ -50,6 +49,7 @@
         <th>Answer</th>
         <th>Submitted At</th>
         <th>Rank</th>
+        <th>Action</th>
       </tr>
     </thead>
     <tbody id="answersTable"></tbody>
@@ -92,13 +92,14 @@
 </div>
 
 <script>
-// Host auth check
+// ---- Host auth check ----
 document.addEventListener("DOMContentLoaded", () => {
     if (sessionStorage.getItem("hostAuth") !== "true") {
         window.location.href = "host-menu.html";
     }
 });
 
+// ---- Firebase init ----
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
   authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -114,19 +115,20 @@ const db = firebase.database();
 
 const pointsMap = { 1: 50, 2: 40, 3: 30, 4: 20, 5: 10 };
 
+// ---- Current question tracker ----
 db.ref("companyFeud/currentQuestion").on("value", snap => {
     document.getElementById("questionNum").innerText = snap.val() || 1;
 });
 
-// Show ordered answers
+// ---- Show ordered answers with Wrong button ----
 db.ref("companyFeud/answers").on("value", snap => {
     const answers = snap.val() || {};
     let displayList = [];
 
     Object.entries(answers).forEach(([team, guesses]) => {
         if (Array.isArray(guesses)) {
-            guesses.forEach(g => {
-                displayList.push({ team, guess: g.guess, timestamp: g.timestamp || 0 });
+            guesses.forEach((g, index) => {
+                displayList.push({ team, guess: g.guess, timestamp: g.timestamp || 0, index });
             });
         }
     });
@@ -151,11 +153,28 @@ db.ref("companyFeud/answers").on("value", snap => {
               <option value="5">5th</option>
             </select>
           </td>
+          <td>
+            <button style="background:grey;color:white;" onclick="markWrong('${data.team}', ${data.index})">❌ Wrong</button>
+          </td>
         `;
         tbody.appendChild(tr);
     });
 });
 
+// ---- Remove a specific wrong answer ----
+function markWrong(team, index) {
+    db.ref(`companyFeud/answers/${team}`).once("value").then(snap => {
+        let guesses = snap.val() || [];
+        if (index >= 0 && index < guesses.length) {
+            guesses.splice(index, 1);
+            db.ref(`companyFeud/answers/${team}`).set(guesses).then(() => {
+                alert(`❌ Removed wrong answer from ${team}`);
+            });
+        }
+    });
+}
+
+// ---- Apply scores ----
 function applyScores() {
     const awardedTeams = new Set();
 
@@ -204,11 +223,13 @@ function applyScores() {
     });
 }
 
+// ---- Next Question ----
 function nextQuestion() {
     db.ref("companyFeud/currentQuestion").transaction(q => (q || 1) + 1);
     db.ref("companyFeud/answers").set({});
 }
 
+// ---- Reset Mini Game ----
 function resetMiniGame() {
     if (!confirm("⚠ Reset Company Feud scores and answers?")) return;
     const resetScores = { "Team 1": 0, "Team 2": 0, "Team 3": 0, "Team 4": 0, "Team 5": 0 };
@@ -218,14 +239,14 @@ function resetMiniGame() {
     alert("♻ Mini-game reset!");
 }
 
+// ---- Scoreboard ----
 db.ref("companyFeud/roundScores").on("value", snap => {
     const scores = snap.val() || {};
     const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
     const tbody = document.querySelector("#miniScoreTable tbody");
     tbody.innerHTML = "";
     sorted.forEach(([team, score]) => {
-        const row = `<tr><td>${team}</td><td>${score}</td></tr>`;
-        tbody.innerHTML += row;
+        tbody.innerHTML += `<tr><td>${team}</td><td>${score}</td></tr>`;
     });
 });
 
@@ -238,8 +259,7 @@ function declareWinner() {
     return;
   }
 
-  const winsRef = db.ref('wins/' + winner);
-  winsRef.transaction(currentWins => (currentWins || 0) + 1)
+  db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
     .then(() => {
       alert(`${winner} wins this mini-game! 🏆`);
     })
