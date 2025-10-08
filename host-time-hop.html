@@ -7,7 +7,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="gameshow.css">
-
 <style>
     .wrong-btn { background: grey; }
     .reset-btn { background: darkred; }
@@ -52,6 +51,12 @@
     </table>
 </div>
 
+<!-- ✅ Round Answer Reference -->
+<div class="container">
+    <h3>📋 Round Answer</h3>
+    <ul id="answerList"></ul>
+</div>
+
 <div class="container">
   <div class="winner-control">
     <label for="winnerSelect">Declare Mini‑Game Winner:</label>
@@ -81,6 +86,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* ✅ Answers for each round */
+const timeHopAnswers = {
+    1: ["Mia"],
+    2: ["Shamin"],
+    3: ["Ajay"],
+    4: ["Nadya"],
+    5: ["Feijun"],
+    6: ["James"]
+};
+
 /* ===== Buzz Order Table ===== */
 db.ref("timeHopTrivia/buzzOrder").on("value", snap => {
     const order = snap.val() || [];
@@ -99,8 +114,24 @@ db.ref("timeHopTrivia/buzzOrder").on("value", snap => {
 
 /* ===== Question Number ===== */
 db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
-    document.getElementById("questionNum").innerText = snap.val() || 1;
+    const qNum = snap.val() || 1;
+    document.getElementById("questionNum").innerText = qNum;
+    showRoundAnswer(qNum);
 });
+
+/* Show round answer in reference panel */
+function showRoundAnswer(round) {
+    const list = document.getElementById("answerList");
+    list.innerHTML = "";
+    const answers = timeHopAnswers[round];
+    if (!answers) {
+        list.innerHTML = "<li>No answer set for this round.</li>";
+        return;
+    }
+    answers.forEach(ans => {
+        list.innerHTML += `<li>${ans}</li>`;
+    });
+}
 
 /* ===== Functions ===== */
 function startQuestion() {
@@ -156,7 +187,6 @@ function markWrong(team) {
             const allWrong = allBuzzed.length > 0 && wrongTeams.length >= allBuzzed.length;
 
             if (allWrong && allBuzzed.length < allTeams.length) {
-                // not all teams have played yet → still possible others buzz
                 console.log("Some teams haven't buzzed yet — waiting");
             }
             if (allWrong) {
@@ -203,6 +233,7 @@ function resetGame() {
         });
         db.ref("teams").set({});
         db.ref("resetFlags/gameReset").set(Date.now());
+        showRoundAnswer(1);
     }
 }
 

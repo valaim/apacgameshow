@@ -75,6 +75,12 @@
   </table>
 </div>
 
+<!-- Answers Reference Panel -->
+<div class="container" id="answersRefContainer">
+  <h3>📋 Round Answers</h3>
+  <ul id="answersList"></ul>
+</div>
+
 <!-- Winner Control -->
 <div class="container">
   <div class="winner-control">
@@ -115,10 +121,58 @@ const db = firebase.database();
 
 const pointsMap = { 1: 50, 2: 40, 3: 30, 4: 20, 5: 10 };
 
+// ✅ Official answers for each round
+const companyFeudAnswers = {
+  1: [
+    "Annoying Coworker",
+    "Bad Email from Boss",
+    "Coffee Machine Broken",
+    "Meeting Overload",
+    "Computer Crash"
+  ],
+  2: [
+    "Annoying Coworker",
+    "Bad Email from Boss",
+    "Coffee Machine Broken",
+    "Meeting Overload",
+    "Computer Crash"
+  ],
+  3: [
+    "Working Hard / Typing Furiously",
+    "Looking at Spreadsheets",
+    "On a \"Work Call\"",
+    "Reading an Email",
+    "Helping Someone"
+  ],
+  4: [
+    "\"As Per My Last Email...\" Tone",
+    "Reply All",
+    "CC-ing the Boss",
+    "Long Threads With No Point",
+    "Unclear Instructions"
+  ]
+};
+
 // ---- Current question tracker ----
 db.ref("companyFeud/currentQuestion").on("value", snap => {
-    document.getElementById("questionNum").innerText = snap.val() || 1;
+    const roundNum = snap.val() || 1;
+    document.getElementById("questionNum").innerText = roundNum;
+    showAnswers(roundNum);
 });
+
+// Display correct answers for current round
+function showAnswers(round) {
+    const list = document.getElementById("answersList");
+    list.innerHTML = "";
+    const answers = companyFeudAnswers[round];
+    if (!answers) {
+        list.innerHTML = "<li>No answers set for this round.</li>";
+        return;
+    }
+    answers.forEach((ans, i) => {
+        list.innerHTML += `<li>${i+1}. ${ans}</li>`;
+    });
+}
 
 // ---- Show ordered answers with Wrong button ----
 db.ref("companyFeud/answers").on("value", snap => {
@@ -180,7 +234,6 @@ function applyScores() {
 
     db.ref("companyFeud/currentQuestion").once("value").then(qSnap => {
         const currentQ = qSnap.val() || 1;
-
         db.ref("companyFeud/answers").once("value").then(snap => {
             const answers = snap.val() || {};
 
@@ -236,6 +289,7 @@ function resetMiniGame() {
     db.ref("companyFeud/roundScores").set(resetScores);
     db.ref("companyFeud/answers").set({});
     db.ref("companyFeud/currentQuestion").set(1);
+    showAnswers(1);
     alert("♻ Mini-game reset!");
 }
 
@@ -253,7 +307,6 @@ db.ref("companyFeud/roundScores").on("value", snap => {
 // ---- Declare Winner ----
 function declareWinner() {
   const winner = document.getElementById('winnerSelect').value;
-
   if (!winner) {
     alert("Please select a team to declare as winner!");
     return;
