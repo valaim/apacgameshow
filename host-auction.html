@@ -22,6 +22,10 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .container { animation: fadeIn 0.8s ease-in-out; }
+    .clickable-points:hover {
+      background-color: #f0f0f0;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -71,6 +75,27 @@
   <input type="number" id="pointsInput" placeholder="Enter item points">
   <button onclick="applyPoints()">🎁 Apply Item Points</button><br><br>
 
+  <!-- 📋 Item Points Reference Table -->
+  <div class="container">
+    <h3>📦 Item Points Reference</h3>
+    <table>
+      <thead>
+        <tr><th>Item No.</th><th>Points</th></tr>
+      </thead>
+      <tbody>
+        <tr class="clickable-points" onclick="setPoints(15)"><td>1</td><td>+15</td></tr>
+        <tr class="clickable-points" onclick="setPoints(-8)"><td>2</td><td>-8</td></tr>
+        <tr class="clickable-points" onclick="setPoints(10)"><td>3</td><td>+10</td></tr>
+        <tr class="clickable-points" onclick="setPoints(-12)"><td>4</td><td>-12</td></tr>
+        <tr class="clickable-points" onclick="setPoints(9)"><td>5</td><td>+9</td></tr>
+        <tr class="clickable-points" onclick="setPoints(14)"><td>6</td><td>+14</td></tr>
+        <tr class="clickable-points" onclick="setPoints(18)"><td>7</td><td>+18</td></tr>
+        <tr class="clickable-points" onclick="setPoints(-10)"><td>8</td><td>-10</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.9em;color:#555;">Click a row to auto-fill the points input above.</p>
+  </div>
+
   <button onclick="resetGame()" class="reset-btn">♻ Reset Game</button>
 </div>
 
@@ -116,6 +141,11 @@ db.ref("teams").on("value", snap => {
 db.ref("auction/currentRound").on("value", snap => {
   document.getElementById("roundNum").innerText = snap.val();
 });
+
+// Fill points input from table click
+function setPoints(val) {
+  document.getElementById("pointsInput").value = val;
+}
 
 // Declare Mini‑Game Winner
 function declareWinner() {
