@@ -1,0 +1,104 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Game Show Wins Summary</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Shared Game Show CSS -->
+<link rel="stylesheet" href="gameshow.css">
+
+</head>
+<body>
+
+<header>
+  <!-- Back button consistent with other pages -->
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🏆 Mini‑Game Wins Summary 🏆
+</header>
+
+<div class="container">
+  <table id="summaryWins">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Mini‑Games Won</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Team 1</td><td>0</td></tr>
+      <tr><td>Team 2</td><td>0</td></tr>
+      <tr><td>Team 3</td><td>0</td></tr>
+      <tr><td>Team 4</td><td>0</td></tr>
+      <tr><td>Team 5</td><td>0</td></tr>
+    </tbody>
+  </table>
+
+  <br>
+  <button onclick="resetWins()" class="reset-btn">♻ Reset Wins</button>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Listen for changes in wins node
+db.ref("wins").on("value", snap => {
+    const winsData = snap.val() || {};
+    const tbody = document.querySelector("#summaryWins tbody");
+    tbody.innerHTML = "";
+
+    // Determine highest wins to highlight leaders
+    let highest = Math.max(...Object.values(winsData));
+
+    Object.keys(winsData).forEach(team => {
+        const row = document.createElement("tr");
+        if (winsData[team] === highest && highest > 0) {
+            row.classList.add("highlight");
+        }
+        row.innerHTML = `<td>${team}</td><td>${winsData[team]}</td>`;
+        tbody.appendChild(row);
+    });
+});
+
+// Reset wins
+function resetWins() {
+    if (!confirm("⚠ Are you sure you want to reset ALL wins to 0?")) return;
+
+    const resetData = {
+      "Team 1": 0,
+      "Team 2": 0,
+      "Team 3": 0,
+      "Team 4": 0,
+      "Team 5": 0
+    };
+
+    db.ref("wins").set(resetData)
+      .then(() => alert("✅ All wins have been reset to 0."))
+      .catch(err => alert("❌ Error resetting wins: " + err.message));
+}
+</script>
+
+</body>
+</html>

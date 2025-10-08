@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Host Control Panel</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Shared styles -->
+<link rel="stylesheet" href="gameshow.css">
+
+<!-- ✅ Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<style>
+.container {
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+input[type="password"] {
+    padding: 10px;
+    font-size: 1em;
+    border: 2px solid #d52b1e;
+    border-radius: 8px;
+    margin: 10px;
+    outline: none;
+    width: 80%;
+    transition: border 0.3s;
+}
+input[type="password"]:focus {
+    border-color: #ff3b2e;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    background: #d52b1e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+}
+button:hover {
+    background: #ff3b2e;
+    transform: scale(1.05);
+}
+
+/* Danger Zone Style Buttons - same shape but special colors */
+.danger-red {
+    background-color: #b80000;
+}
+.danger-red:hover {
+    background-color: #ff0000;
+}
+
+.danger-yellow {
+    background-color: #e6a800;
+    color: black;
+}
+.danger-yellow:hover {
+    background-color: #ffc107;
+}
+</style>
+</head>
+<body>
+
+<header>
+    <!-- Back to Main Menu -->
+    <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 18l-6-6 6-6"/>
+          <path d="M9 12h12"/>
+        </svg>
+    </button>
+    🛠 Host Control Panel
+</header>
+
+<!-- Password Screen -->
+<div class="container" id="password-screen">
+    <h2>Enter Host Password</h2>
+    <input type="password" id="hostPassword" placeholder="Password">
+    <br>
+    <button onclick="checkPassword()">Unlock</button>
+    <p id="error-message" style="color: red; display: none;">❌ Incorrect password!</p>
+</div>
+
+<!-- Host Menu -->
+<div class="container" id="host-panel" style="display:none;">
+    <h2>Welcome, Host!</h2>
+    <div class="menu-container">
+        <a href="host-auction.html" class="menu-button">🎯 Host Auction Game</a>
+        <a href="host-company-feud.html" class="menu-button">💬 Host Company Feud</a>
+        <a href="host-hot-seat.html" class="menu-button">🔥 Host Hot Seat</a>
+        <a href="host-time-hop.html" class="menu-button">🕵 Host Time Hop Trivia</a>
+        
+        <!-- 👥 Added Team Selector link -->
+        <a href="teamselector.html" class="menu-button">👥 Host Team Selector</a>
+        
+        <a href="ScoreSummary.html" class="menu-button">📊 View Scoreboard</a>
+        <a href="index.html" class="menu-button host-button">⬅ Go Back to Main Menu</a>
+    </div>
+
+    <!-- Danger Zone Section -->
+    <div style="margin-top:40px; padding:15px; border:2px solid red; background:#ffe6e6; border-radius:8px;">
+        <h3 style="color:red;">⚠ GLOBAL Danger Zone</h3>
+        <p>These actions will affect ALL games and players. Proceed with caution!</p>
+        <button class="danger-red" onclick="deleteAllPlayers()">🗑 Delete All Players</button>
+        <button class="danger-yellow" onclick="deleteAllGameHistory()">🗑 Delete All Game History</button>
+    </div>
+</div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+    authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+    databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "apacgameshow-f8d5d",
+    storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+    messagingSenderId: "572761881903",
+    appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (sessionStorage.getItem("hostAuth") === "true") {
+        document.getElementById("password-screen").style.display = "none";
+        document.getElementById("host-panel").style.display = "block";
+    }
+});
+function checkPassword() {
+    const enteredPassword = document.getElementById("hostPassword").value.trim();
+    if (enteredPassword === "apacgameshow") {
+        sessionStorage.setItem("hostAuth", "true");
+        document.getElementById("password-screen").style.display = "none";
+        document.getElementById("host-panel").style.display = "block";
+    } else {
+        const errorMsg = document.getElementById("error-message");
+        errorMsg.style.display = "block";
+        setTimeout(() => { errorMsg.style.display = "none"; }, 2000);
+    }
+}
+
+// GLOBAL Delete Functions
+function deleteAllPlayers() {
+    if (confirm("⚠ This will DELETE ALL players for ALL games. Proceed?")) {
+        db.ref("players").remove().then(() => {
+            db.ref("resetFlags/registrationReset").set(Date.now());
+            alert("✅ All players deleted & registration reset triggered.");
+        });
+    }
+}
+function deleteAllGameHistory() {
+    if (confirm("⚠ This will DELETE ALL game history for ALL games. Proceed?")) {
+        db.ref("gameHistory").remove().then(() => alert("✅ Game history cleared."));
+    }
+}
+</script>
+
+</body>
+</html>

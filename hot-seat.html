@@ -1,0 +1,346 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hot Seat - Participant</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="gameshow.css">
+<style>
+#registrationSection { margin-bottom: 20px; }
+.gameplaySection { display: none; }
+#playerInfo { font-weight: bold; margin-bottom: 10px; }
+.switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
+
+#countdownWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 8px;
+}
+#countdownDisplay {
+  font-family: 'Luckiest Guy', cursive;
+  font-size: 1.6em;
+  font-weight: bold;
+  color: #fff;
+  background: radial-gradient(circle at center, #ff3b2e, #a30000);
+  width: 50px;
+  height: 50px;
+  line-height: 50px;
+  border-radius: 50%;
+  text-align: center;
+  box-shadow: 0 0 8px rgba(255,0,0,0.6);
+  animation: pulseCountdown 1s infinite;
+}
+@keyframes pulseCountdown {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+#countdownDisplay.low-time {
+  background: radial-gradient(circle at center, #ff0000, #800000);
+  color: #FFD700;
+  animation: pulseCountdownFast 0.5s infinite;
+}
+@keyframes pulseCountdownFast {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+#countdownDisplay.stopped {
+  animation: none !important;
+  background: grey;
+  color: white;
+  box-shadow: none;
+}
+.countdownLabel {
+  font-size: 0.9em;
+  font-weight: bold;
+  color: #a30000;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🔥 Hot Seat
+</header>
+
+<div class="container" id="registrationSection">
+  <h3>👤 Player Registration</h3>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <label for="teamSelectReg">Select Your Team:</label>
+  <select id="teamSelectReg">
+    <option value="">-- Choose a team --</option>
+    <option value="Team 1">Team 1</option>
+    <option value="Team 2">Team 2</option>
+    <option value="Team 3">Team 3</option>
+    <option value="Team 4">Team 4</option>
+    <option value="Team 5">Team 5</option>
+  </select>
+  <br><br>
+  <button onclick="registerInline()">✅ Join Game</button>
+</div>
+
+<div class="container gameplaySection">
+    <div id="playerInfo"></div>
+    <button class="switch-btn" onclick="switchPlayer()">🔄 Switch Player</button>
+    <h3>Round: <span id="roundNum">1</span></h3>
+    <p id="statusMsg">Waiting for the round to start...</p>
+    <button id="buzzBtn" onclick="buzz()">🚨 Buzz In!</button>
+
+    <!-- Countdown -->
+    <div id="countdownWrapper">
+      <div id="countdownDisplay" class="countdown-timer"></div>
+      <span class="countdownLabel">seconds left to answer</span>
+    </div>
+</div>
+
+<div class="container gameplaySection">
+    <h3>📊 Leaderboard</h3>
+    <table>
+        <thead><tr><th>Team</th><th>Score</th></tr></thead>
+        <tbody id="scoreTable"></tbody>
+    </table>
+</div>
+
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+    authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+    databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "apacgameshow-f8d5d",
+    storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+    messagingSenderId: "572761881903",
+    appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let selectedTeam = null;
+let playerName = null;
+let roundStartTime = null; // ✅ track round start time
+let countdownInterval = null;
+let timerExpired = false;
+
+// Reset registration if host triggers
+db.ref("resetFlags/registrationReset").on("value", snapshot => {
+  const flag = snapshot.val();
+  const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
+  if (flag && flag > lastHandled) {
+    sessionStorage.setItem('lastResetTime', flag);
+    sessionStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerTeam");
+    location.reload();
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+  if (storedName && storedTeam) {
+    db.ref('players').once('value').then(snapshot => {
+      const players = snapshot.val() || {};
+      const exists = Object.values(players).some(p =>
+        p.name && p.team && p.name.toLowerCase() === storedName.toLowerCase() && p.team === storedTeam
+      );
+      if (exists) {
+        playerName = storedName;
+        selectedTeam = storedTeam;
+        document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+        document.getElementById('registrationSection').style.display = 'none';
+        document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+        initGameListeners();
+      } else {
+        switchPlayer();
+      }
+    });
+  }
+});
+
+function switchPlayer() {
+  sessionStorage.removeItem("playerName");
+  sessionStorage.removeItem("playerTeam");
+  playerName = null;
+  selectedTeam = null;
+  document.getElementById('registrationSection').style.display = 'block';
+  document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'none');
+}
+
+function registerInline() {
+  const nameVal = document.getElementById('playerName').value.trim();
+  const teamVal = document.getElementById('teamSelectReg').value;
+  if (!nameVal || !teamVal) { alert("Please enter your name and select your team."); return; }
+
+  playerName = nameVal;
+  selectedTeam = teamVal;
+
+  db.ref('players').once('value').then(snapshot => {
+    const players = snapshot.val() || {};
+    const exists = Object.values(players).some(p =>
+      p.name && p.team && p.name.toLowerCase() === playerName.toLowerCase() && p.team === selectedTeam
+    );
+    if (!exists) db.ref('players').push({ name: playerName, team: selectedTeam });
+
+    sessionStorage.setItem("playerName", playerName);
+    sessionStorage.setItem("playerTeam", selectedTeam);
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+    initGameListeners();
+  });
+}
+
+function initGameListeners() {
+  db.ref("hotSeat/currentRound").on("value", snap => {
+      document.getElementById("roundNum").innerText = snap.val() || 1;
+  });
+
+  db.ref("hotSeat/roundStartTime").on("value", snap => {
+      const val = snap.val();
+      if (val) {
+          roundStartTime = val;
+      }
+  });
+
+  db.ref("hotSeat/roundActive").on("value", snap => {
+    const active = snap.val();
+    if (active) {
+      if (!roundStartTime) {
+        roundStartTime = Date.now();
+      }
+      timerExpired = false;
+      document.getElementById("buzzBtn").disabled = false;
+      document.getElementById("countdownDisplay").innerText = "";
+      document.getElementById("statusMsg").innerText = "Round active! BUZZ to answer!";
+    } else {
+      document.getElementById("buzzBtn").disabled = true;
+      document.getElementById("statusMsg").innerText = "Waiting for the next round...";
+    }
+  });
+
+  db.ref("hotSeat/wrongTeams").on("value", async snap => {
+    const wrongTeams = snap.val() || [];
+    const activeSnap = await db.ref("hotSeat/roundActive").once("value");
+    const active = activeSnap.val();
+
+    if (active) {
+      const buzzSnap = await db.ref("hotSeat/buzzOrder").once("value");
+      const allBuzzedTeams = buzzSnap.val() || [];
+      const allAnswered = [...new Set([...allBuzzedTeams, ...wrongTeams])];
+      const allWrong = allAnswered.length > 0 && wrongTeams.length >= allAnswered.length;
+
+      if (allWrong) {
+        timerExpired = false;
+        document.getElementById("buzzBtn").disabled = false;
+        document.getElementById("countdownDisplay").innerText = "";
+        document.getElementById("statusMsg").innerText = "All teams wrong — buzzers reopened!";
+      }
+    }
+  });
+
+  db.ref("teams").on("value", snap => {
+      const teams = snap.val() || {};
+      const tbody = document.getElementById("scoreTable");
+      tbody.innerHTML = "";
+      const sorted = Object.keys(teams).sort((a, b) => (teams[b].score || 0) - (teams[a].score || 0));
+      sorted.forEach(team => {
+          tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
+      });
+  });
+
+  db.ref("hotSeat/currentBuzz").on("value", snap => {
+    const data = snap.val();
+    if (data && data.team === selectedTeam) {
+      startSharedCountdown(data.startTime, data.duration);
+    }
+  });
+
+  db.ref("resetFlags/gameReset").on("value", snap => {
+    if (snap.val()) {
+      timerExpired = false;
+      document.getElementById("buzzBtn").disabled = true;
+      document.getElementById("countdownDisplay").innerText = "";
+    }
+  });
+}
+
+function buzz() {
+    db.ref("hotSeat/wrongTeams").once("value").then(wSnap => {
+      const wrongTeams = wSnap.val() || [];
+      db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
+        const buzzOrder = bSnap.val() || [];
+        const allBuzzedTeams = [...buzzOrder, ...wrongTeams].filter((t,i,a) => a.indexOf(t)===i);
+        const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allAnswered.length;
+
+        if (wrongTeams.includes(selectedTeam) && !allWrong) {
+          alert("⛔ Your team already answered wrong this round.");
+          return;
+        }
+
+        if (!buzzOrder.includes(selectedTeam)) {
+          buzzOrder.push(selectedTeam);
+          db.ref("hotSeat/buzzOrder").set(buzzOrder);
+
+          let reactionSecs = roundStartTime ? (Date.now() - roundStartTime) / 1000 : 0;
+
+          // ✅ NEW: record the current round number for awards dedupe
+          let currentRoundNum = Number(document.getElementById("roundNum").innerText) || null;
+
+          db.ref("gameHistory").push({
+              game: "hotSeat",
+              event: "buzz",
+              player: playerName || "Unknown",
+              team: selectedTeam,
+              round: currentRoundNum,   // added property
+              reactionTime: reactionSecs,
+              timestamp: Date.now()
+          });
+
+          db.ref("hotSeat/currentBuzz").set({
+              team: selectedTeam,
+              startTime: Date.now(),
+              duration: 5
+          });
+
+          startSharedCountdown(Date.now(), 5);
+        }
+      });
+    });
+}
+
+function startSharedCountdown(startTime, duration) {
+  clearInterval(countdownInterval);
+  timerExpired = false;
+  const countdownDisplay = document.getElementById("countdownDisplay");
+
+  countdownInterval = setInterval(() => {
+    let elapsed = Math.floor((Date.now() - startTime) / 1000);
+    let remaining = duration - elapsed;
+
+    if (remaining > 0) {
+      countdownDisplay.innerText = remaining;
+      countdownDisplay.classList.toggle("low-time", remaining <= 3);
+      countdownDisplay.classList.remove("stopped");
+    } else {
+      countdownDisplay.innerText = "❌";
+      countdownDisplay.classList.remove("low-time");
+      countdownDisplay.classList.add("stopped");
+      clearInterval(countdownInterval);
+      timerExpired = true;
+      document.getElementById("buzzBtn").disabled = true;
+      db.ref(`hotSeat/timeUp/${selectedTeam}`).set(Date.now());
+    }
+  }, 250);
+}
+</script>
+</body>
+</html>

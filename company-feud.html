@@ -1,0 +1,232 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Company Feud - Participant</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+#registrationSection { margin-bottom: 20px; }
+.gameplaySection { display: none; }
+#playerInfo { font-weight: bold; margin-bottom: 10px; }
+.switch-btn {
+  background: #f44336;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='index.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  💬 Company Feud
+</header>
+
+<!-- Registration Section -->
+<div class="container" id="registrationSection">
+  <h3>👤 Player Registration</h3>
+  <input type="text" id="playerName" placeholder="Enter your name">
+  <label for="teamSelectReg">Select Your Team:</label>
+  <select id="teamSelectReg">
+    <option value="">-- Choose a team --</option>
+    <option value="Team 1">Team 1</option>
+    <option value="Team 2">Team 2</option>
+    <option value="Team 3">Team 3</option>
+    <option value="Team 4">Team 4</option>
+    <option value="Team 5">Team 5</option>
+  </select>
+  <br><br>
+  <button onclick="registerInline()">✅ Join Game</button>
+</div>
+
+<!-- Gameplay Section -->
+<div class="container gameplaySection">
+  <div id="playerInfo"></div>
+  <button class="switch-btn" onclick="switchPlayer()">🔄 Switch Player</button>
+
+  <div><strong>Question:</strong> <span id="questionNum">1</span></div>
+
+  <h3>Your Guess</h3>
+  <div class="form-row">
+    <input type="text" id="guessInput" placeholder="Type your answer here">
+    <button onclick="submitGuess()">🚀 Submit Guess</button>
+  </div>
+
+  <div class="status" id="statusMessage">Waiting for your submission...</div>
+</div>
+
+<!-- Scoreboard -->
+<div class="container gameplaySection">
+  <h3>📊 Company Feud Scores</h3>
+  <table id="miniScoreTable">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th>Points</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let selectedTeam = null;
+let playerName = null;
+
+// Prevent infinite reload loop if reset triggered
+db.ref("resetFlags/registrationReset").on("value", snapshot => {
+  const flag = snapshot.val();
+  const lastHandled = Number(sessionStorage.getItem('lastResetTime') || 0);
+  if (flag && flag > lastHandled) {
+    sessionStorage.setItem('lastResetTime', flag);
+    sessionStorage.removeItem("playerName");
+    sessionStorage.removeItem("playerTeam");
+    location.reload();
+  }
+});
+
+// Restore player but check if exists in Firebase
+document.addEventListener("DOMContentLoaded", () => {
+  const storedName = sessionStorage.getItem("playerName");
+  const storedTeam = sessionStorage.getItem("playerTeam");
+
+  if (storedName && storedTeam) {
+    db.ref('players').once('value').then(snapshot => {
+      const players = snapshot.val() || {};
+      const exists = Object.values(players).some(p =>
+        p.name && p.team &&
+        p.name.toLowerCase() === storedName.toLowerCase() &&
+        p.team === storedTeam
+      );
+      if (exists) {
+        playerName = storedName;
+        selectedTeam = storedTeam;
+        document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+        document.getElementById('registrationSection').style.display = 'none';
+        document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+        initGameListeners();
+      } else {
+        switchPlayer(); // Player missing in Firebase, force re-register
+      }
+    });
+  }
+});
+
+// Registration function
+function registerInline() {
+  const nameVal = document.getElementById('playerName').value.trim();
+  const teamVal = document.getElementById('teamSelectReg').value;
+
+  if (!nameVal || !teamVal) {
+    alert("Please enter your name and select your team.");
+    return;
+  }
+
+  playerName = nameVal;
+  selectedTeam = teamVal;
+
+  db.ref('players').once('value').then(snapshot => {
+    const players = snapshot.val() || {};
+    const exists = Object.values(players).some(p =>
+      p.name && p.team &&
+      p.name.toLowerCase() === playerName.toLowerCase() &&
+      p.team === selectedTeam
+    );
+    if (!exists) {
+      db.ref('players').push({ name: playerName, team: selectedTeam });
+    }
+
+    sessionStorage.setItem("playerName", playerName);
+    sessionStorage.setItem("playerTeam", selectedTeam);
+
+    document.getElementById('playerInfo').innerText = `You are: ${playerName} (${selectedTeam})`;
+    document.getElementById('registrationSection').style.display = 'none';
+    document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'block');
+    initGameListeners();
+  });
+}
+
+// Switch Player
+function switchPlayer() {
+  sessionStorage.removeItem("playerName");
+  sessionStorage.removeItem("playerTeam");
+  playerName = null;
+  selectedTeam = null;
+  document.getElementById('registrationSection').style.display = 'block';
+  document.querySelectorAll('.gameplaySection').forEach(el => el.style.display = 'none');
+}
+
+// Game Listeners
+function initGameListeners() {
+  db.ref("companyFeud/currentQuestion").on("value", snap => {
+    document.getElementById("questionNum").innerText = snap.val() || 1;
+  });
+
+  db.ref("companyFeud/roundScores").on("value", snap => {
+    const scores = snap.val() || {};
+    const sorted = Object.entries(scores).sort((a,b) => b[1] - a[1]);
+    const tbody = document.querySelector("#miniScoreTable tbody");
+    tbody.innerHTML = "";
+    sorted.forEach(([team, score]) => {
+      const row = `<tr><td>${team}</td><td>${score}</td></tr>`;
+      tbody.innerHTML += row;
+    });
+  });
+}
+
+// Submit guess
+function submitGuess() {
+  const guess = document.getElementById("guessInput").value.trim();
+  if (!guess) {
+    alert("❌ Please enter a guess first.");
+    return;
+  }
+  const timestamp = Date.now();
+  const guessData = {
+    guess: guess,
+    player: playerName || "Unknown",
+    team: selectedTeam,
+    timestamp: timestamp
+  };
+  const teamRef = db.ref(`companyFeud/answers/${selectedTeam}`);
+  teamRef.once("value").then(snap => {
+    let guesses = snap.val() || [];
+    if (!Array.isArray(guesses)) guesses = [];
+    guesses.push(guessData);
+    teamRef.set(guesses).then(() => {
+      document.getElementById("statusMessage").innerText = `✅ Submitted: ${guess}`;
+      document.getElementById("guessInput").value = "";
+    });
+  });
+}
+</script>
+</body>
+</html>

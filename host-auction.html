@@ -1,0 +1,237 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auction Game - Host View</title>
+
+  <!-- ✅ Firebase SDKs First -->
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  
+  <!-- Shared styles -->
+  <link rel="stylesheet" href="gameshow.css">
+  
+  <style>
+    .reset-btn { background-color: darkred; }
+    .reset-btn:hover { background-color: red; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .container { animation: fadeIn 0.8s ease-in-out; }
+  </style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='host-menu.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🎬 Auction Game - Host View
+</header>
+
+<div class="container">
+  <h2>Current Round: <span id="roundNum">1</span></h2>
+  
+  <table>
+    <thead>
+      <tr><th>Team</th><th>Bid ($)</th><th>Money ($)</th><th>Score</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Team 1</td><td id="bid-Team 1">0</td><td id="money-Team 1">1000</td><td id="score-Team 1">0</td></tr>
+      <tr><td>Team 2</td><td id="bid-Team 2">0</td><td id="money-Team 2">1000</td><td id="score-Team 2">0</td></tr>
+      <tr><td>Team 3</td><td id="bid-Team 3">0</td><td id="money-Team 3">1000</td><td id="score-Team 3">0</td></tr>
+      <tr><td>Team 4</td><td id="bid-Team 4">0</td><td id="money-Team 4">1000</td><td id="score-Team 4">0</td></tr>
+      <tr><td>Team 5</td><td id="bid-Team 5">0</td><td id="money-Team 5">1000</td><td id="score-Team 5">0</td></tr>
+    </tbody>
+  </table>
+
+  <!-- Winner Control -->
+  <div class="winner-control">
+    <label for="winnerSelect">Declare Mini‑Game Winner:</label>
+    <select id="winnerSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+    <button onclick="declareWinner()">✅ Set Winner</button>
+  </div>
+
+  <button onclick="endRound()">🏁 End Round</button><br><br>
+
+  <input type="number" id="pointsInput" placeholder="Enter item points">
+  <button onclick="applyPoints()">🎁 Apply Item Points</button><br><br>
+
+  <button onclick="resetGame()" class="reset-btn">♻ Reset Game</button>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const loggedIn = sessionStorage.getItem("hostAuth");
+    if (loggedIn !== "true") {
+        window.location.href = "host-menu.html";
+    }
+});
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Real-time UI Updates
+db.ref("auction/bids").on("value", snap => {
+  const bids = snap.val() || {};
+  Object.keys(bids).forEach(team => {
+    const el = document.getElementById("bid-" + team);
+    if (el) el.innerText = bids[team];
+  });
+});
+
+db.ref("teams").on("value", snap => {
+  const teams = snap.val() || {};
+  Object.keys(teams).forEach(team => {
+    const moneyEl = document.getElementById("money-" + team);
+    const scoreEl = document.getElementById("score-" + team);
+    if (moneyEl) moneyEl.innerText = teams[team].money;
+    if (scoreEl) scoreEl.innerText = teams[team].score;
+  });
+});
+
+db.ref("auction/currentRound").on("value", snap => {
+  document.getElementById("roundNum").innerText = snap.val();
+});
+
+// Declare Mini‑Game Winner
+function declareWinner() {
+  const winner = document.getElementById('winnerSelect').value;
+  if (!winner) {
+    alert("Please select a team to declare as winner!");
+    return;
+  }
+  db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
+    .then(() => {
+      alert(`${winner} wins this mini-game! 🏆`);
+    });
+}
+
+// End Round & log win with player name
+function endRound() {
+  db.ref("auction/bids").once("value").then(snap => {
+    const bids = snap.val() || {};
+    let highest = 0;
+    let winners = [];
+
+    Object.keys(bids).forEach(team => {
+      if (bids[team] > highest) {
+        highest = bids[team];
+        winners = [team];
+      } else if (bids[team] === highest && highest > 0) {
+        winners.push(team);
+      }
+    });
+
+    if (winners.length === 0) {
+      alert("No bids placed this round.");
+      return;
+    }
+
+    winners.forEach(team => {
+      db.ref("teams/" + team + "/money").transaction(money => Math.max((money || 0) - highest, 0));
+    });
+
+    db.ref("auction/currentRoundWinner").set(winners.join(" & "));
+
+    winners.forEach(team => {
+      db.ref("gameHistory").orderByChild("team").equalTo(team).once("value").then(histSnap => {
+        let playerName = "Unknown";
+        let latestTime = 0;
+        histSnap.forEach(item => {
+          const val = item.val();
+          if (val.event === "bid" && val.bidAmount === highest && val.timestamp > latestTime) {
+            latestTime = val.timestamp;
+            playerName = val.player || "Unknown";
+          }
+        });
+        db.ref("gameHistory").push({
+          game: "auction",
+          event: "win",
+          player: playerName,
+          team: team,
+          bidAmount: highest,
+          timestamp: Date.now()
+        });
+      });
+    });
+
+    Object.keys(bids).forEach(team => {
+      db.ref("auction/bids/" + team).set(0);
+    });
+
+    alert("Round Ended. Winner(s): " + winners.join(", "));
+  });
+}
+
+// Apply Points
+function applyPoints() {
+  const points = parseInt(document.getElementById("pointsInput").value) || 0;
+  db.ref("auction/currentRoundWinner").once("value").then(snap => {
+    let winners = snap.val();
+    if (!winners) {
+      alert("No winner set.");
+      return;
+    }
+    winners = winners.split("&").map(w => w.trim());
+    winners.forEach(team => {
+      db.ref("teams/" + team + "/score").transaction(score => (score || 0) + points);
+    });
+    db.ref("auction/currentRound").transaction(r => (r || 1) + 1);
+    db.ref("auction/currentRoundWinner").set("");
+    document.getElementById("pointsInput").value = "";
+  });
+}
+
+// Reset Game (Auction Only)
+function resetGame() {
+  if (!confirm("⚠ Reset the whole auction game?")) return;
+  const initialData = {
+    teams: {
+      "Team 1": { money: 1000, score: 0 },
+      "Team 2": { money: 1000, score: 0 },
+      "Team 3": { money: 1000, score: 0 },
+      "Team 4": { money: 1000, score: 0 },
+      "Team 5": { money: 1000, score: 0 }
+    },
+    auction: {
+      currentRound: 1,
+      currentRoundWinner: "",
+      bids: {
+        "Team 1": 0,
+        "Team 2": 0,
+        "Team 3": 0,
+        "Team 4": 0,
+        "Team 5": 0
+      }
+    }
+  };
+  db.ref("/").update(initialData).then(() => alert("✅ Auction game reset successfully!"));
+}
+</script>
+
+</body>
+</html>

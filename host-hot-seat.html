@@ -1,0 +1,408 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hot Seat - Host View</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+    .wrong-btn { background: grey; }
+    .reset-btn { background: darkred; }
+    .reset-btn:hover { background: red; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='host-menu.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🔥 Hot Seat - Host
+</header>
+
+<div class="container">
+    <h3>Round: <span id="roundNum">1</span> / 5</h3>
+    <div class="form-row">
+      <button onclick="startRound()">▶ Start Round</button>
+      <button onclick="endRound()">⏹ End Round</button>
+    </div>
+    <table>
+        <thead><tr><th>Buzz Order</th><th>Action</th></tr></thead>
+        <tbody id="buzzTable"></tbody>
+    </table>
+    <div class="form-row">
+      <button onclick="nextRound()">⏭ Next Round</button>
+      <button class="reset-btn" onclick="resetGame()">🔄 Reset Game</button>
+    </div>
+</div>
+
+<!-- 📋 Answer Reference Panel -->
+<div class="container" id="answerRefContainer">
+  <h3>📋 Answer Reference</h3>
+  <div id="answerDisplay" class="answer-hidden">Click to Reveal</div>
+</div>
+
+<div class="container">
+    <h3>📊 Total Scores</h3>
+    <table>
+        <thead><tr><th>Team</th><th>Score</th></tr></thead>
+        <tbody id="scoreTable"></tbody>
+    </table>
+</div>
+
+<!-- Winner Control -->
+<div class="container">
+  <div class="winner-control">
+    <label for="winnerSelect">Declare Mini‑Game Winner:</label>
+    <select id="winnerSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+    <button onclick="declareWinner()">✅ Set Winner</button>
+  </div>
+</div>
+
+<script>
+// ==================== 📋 QUESTIONS & ANSWERS ====================
+const answers = {
+  // Question 1 – grouped-shared (TSMs)
+  1: {
+    type: "grouped-shared",
+    answers: {
+      "Group 1": [
+        "Manish Nagpal",
+        "Kang Min Kim",
+        "Jackael Lv",
+        "Koeun Chung",
+        "Bimal Balakrishnan"
+      ],
+      "Group 2": [
+        "Manish Nagpal",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Koeun Chung",
+        "Kang Min Kim"
+      ],
+      "Group 3": [
+        "Kang Min Kim",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Koeun Chung",
+        "Bimal Balakrishnan"
+      ],
+      "Group 4": [
+        "Manish Nagpal",
+        "Kang Min Kim",
+        "Koeun Chung",
+        "Bimal Balakrishnan",
+        "Percival Lawrence Ramos"
+      ],
+      "Group 5": [
+        "Manish Nagpal",
+        "Jackael Lv",
+        "Percival Lawrence Ramos",
+        "Kang Min Kim",
+        "Bimal Balakrishnan"
+      ]
+    }
+  },
+
+  // Question 2 – grouped-shared (Product Models)
+  2: {
+    type: "grouped-shared",
+    answers: {
+      "Desktop/Laptop": [
+        "Apple",
+        "Dell",
+        "ExacqVision",
+        "HP",
+        "Kingwin",
+        "Lenovo",
+        "Microsoft",
+        "Zebra"
+      ],
+      "Mobile": [
+        "Apple",
+        "Blackview",
+        "Cat",
+        "i.safe MOBILE",
+        "Samsung"
+      ],
+      "Tablet": [
+        "Apple",
+        "Bartec",
+        "Getac",
+        "Honeywell",
+        "Lenovo",
+        "Microsoft",
+        "Samsung"
+      ]
+    }
+  },
+
+  // Question 3 – shared (Coca-Cola Brands Active in APAC)
+  3: {
+    type: "shared",
+    answers: [
+      "AdeS (soy-based beverages)",
+      "Aquarius",
+      "Ayataka green tea",
+      "Costa Coffee",
+      "Dasani waters",
+      "Del Valle juices and nectars",
+      "Fairlife",
+      "Fanta",
+      "Fuze Tea",
+      "Georgia coffee",
+      "Gold Peak teas and coffees",
+      "ILOHAS",
+      "Minute Maid juices",
+      "Powerade sports drinks",
+      "Simply juices and Simply Spiked",
+      "Schweppes",
+      "smartwater",
+      "Sprite",
+      "Topo Chico waters and hard seltzers",
+      "vitaminwater"
+    ]
+  },
+
+  // Question 4 – grouped-shared (Minute Maid juices)
+  4: {
+    type: "grouped-shared",
+    answers: {
+      "ASP": [
+        "Pooja Poornam Manivannan [C]",
+        "Naufal Ilham",
+        "Mark Rommel Manuntag",
+        "Giritharan Aanantharaj [C]",
+        "Elaine Ravelo",
+        "Fakrunizam Bin Mohd Zulkefeli [C]",
+        "Dianne Mae Czarina Mansos Condes",
+        "Jean Caviar",
+        "Shamin Bin Ismail",
+        "Mia Gregorio",
+        "Avinash Gadi",
+        "Manjinder Singh Mankoo [C]",
+        "Srinivasu Reddy Vengkatesan [C]",
+        "Jumpol Pangthong",
+        "Chanaphol Wiboonsook [C]",
+        "Thong Quoc Nguyen [C]",
+        "Merorl Canindo",
+        "Esa Andikashwara",
+        "Cheryl Hernandez"
+      ],
+      "INSWA": [
+        "Vishal Tiwari",
+        "Ajay Singh",
+        "Chandan Sharma",
+        "Piyush Singh [C]",
+        "Manish Nagpal"
+      ],
+      "GCM": [
+        "Maison He",
+        "Hong Xiao",
+        "Feijun Zhao",
+        "Leon Lei Xiao",
+        "Ken Cui",
+        "Ethan Hu [C]",
+        "Angel Lu",
+        "Cast Ke",
+        "James SIT [C]"
+      ],
+      "JSK": [
+        "Kentaro Shiozaki",
+        "Jiho Kim",
+        "Martin Macario [C]",
+        "Shunya Watanabe [C]",
+        "Ui Ishigami",
+        "Kazuki Fukazawa",
+        "Nadya Lesnik [C]"
+      ]
+    }
+  }
+};
+
+// ==================== 🔥 FIREBASE + GAME LOGIC ====================
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+  authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+  databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "apacgameshow-f8d5d",
+  storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+  messagingSenderId: "572761881903",
+  appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// Show buzz order table
+db.ref("hotSeat/buzzOrder").on("value", snap => {
+    const order = snap.val() || [];
+    const tbody = document.getElementById("buzzTable");
+    tbody.innerHTML = "";
+    order.forEach(team => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${team}</td>
+                        <td>
+                            <button onclick="awardPoints('${team}')">✅ Correct</button>
+                            <button class="wrong-btn" onclick="markWrong('${team}')">❌ Wrong</button>
+                        </td>`;
+        tbody.appendChild(tr);
+    });
+});
+
+let answersVisible = false;
+
+// Round tracking
+db.ref("hotSeat/currentRound").on("value", snap => {
+    const round = snap.val() || 1;
+    document.getElementById("roundNum").innerText = round;
+    resetAnswerPanel();
+});
+
+// CLICK TO REVEAL LOGIC
+document.getElementById("answerDisplay").addEventListener("click", () => {
+    const round = parseInt(document.getElementById("roundNum").innerText, 10);
+    const answerData = answers[round];
+    const display = document.getElementById("answerDisplay");
+
+    if (!answersVisible) {
+        if (!answerData) {
+            display.innerText = "❌ No answer data for this round";
+        } else {
+            let html = "";
+            if (answerData.type === "grouped-shared") {
+                html += '<div class="answer-grid">';
+                Object.entries(answerData.answers).forEach(([group, list]) => {
+                    html += `<div class="answer-card">
+                              <h4>${group}</h4>
+                              <ul>${list.map(item => `<li>${item}</li>`).join("")}</ul>
+                             </div>`;
+                });
+                html += '</div>';
+            } else if (answerData.type === "shared") {
+                html += '<div class="answer-shared-grid">';
+                answerData.answers.forEach(item => {
+                    html += `<div class="answer-shared-card">${item}</div>`;
+                });
+                html += '</div>';
+            }
+            display.innerHTML = html;
+        }
+        display.classList.add("answer-visible");
+        display.classList.remove("answer-hidden");
+        answersVisible = true;
+    } else {
+        resetAnswerPanel();
+    }
+});
+
+function resetAnswerPanel() {
+    document.getElementById("answerDisplay").innerText = "Click to Reveal";
+    document.getElementById("answerDisplay").classList.remove("answer-visible");
+    document.getElementById("answerDisplay").classList.add("answer-hidden");
+    answersVisible = false;
+}
+
+function startRound() {
+    const currentTime = Date.now();
+    db.ref("hotSeat").update({
+        buzzOrder: [],
+        wrongTeams: [],
+        currentBuzz: null,
+        roundActive: true,
+        questionStartTime: currentTime
+    });
+}
+
+function endRound() {
+    db.ref("hotSeat/roundActive").set(false);
+}
+
+function nextRound() {
+    db.ref("hotSeat/currentRound").transaction(r => (r || 1) + 1);
+    const currentTime = Date.now();
+    db.ref("hotSeat").update({
+        buzzOrder: [],
+        wrongTeams: [],
+        currentBuzz: null,
+        roundActive: true,
+        questionStartTime: currentTime
+    });
+}
+
+function awardPoints(team) {
+    db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3);
+    alert(`${team} gets 3 points!`);
+}
+
+function markWrong(team) {
+    db.ref("hotSeat/buzzOrder").once("value").then(async bSnap => {
+        let buzzOrder = bSnap.val() || [];
+        buzzOrder = buzzOrder.filter(t => t !== team);
+        await db.ref("hotSeat/buzzOrder").set(buzzOrder);
+        const wSnap = await db.ref("hotSeat/wrongTeams").once("value");
+        let wrongTeams = wSnap.val() || [];
+        if (!wrongTeams.includes(team)) {
+            wrongTeams.push(team);
+        }
+        await db.ref("hotSeat/wrongTeams").set(wrongTeams);
+        const allBuzzedTeams = [...buzzOrder, ...wrongTeams].filter((t, i, arr) => arr.indexOf(t) === i);
+        const allWrong = allBuzzedTeams.length > 0 && wrongTeams.length >= allBuzzedTeams.length;
+        if (allWrong) {
+            alert("❌ All teams were wrong — buzzers reopened!");
+            await db.ref("hotSeat/wrongTeams").set([]);
+        }
+    });
+}
+
+function resetGame() {
+    if (confirm("Are you sure you want to reset the game? All scores will be cleared.")) {
+        db.ref("hotSeat").set({
+            currentRound: 1,
+            buzzOrder: [],
+            wrongTeams: [],
+            currentBuzz: null,
+            roundActive: false,
+            questionStartTime: null
+        });
+        db.ref("teams").set({});
+        db.ref("resetFlags/gameReset").set(Date.now());
+    }
+}
+
+db.ref("teams").on("value", snap => {
+    const teams = snap.val() || {};
+    const tbody = document.getElementById("scoreTable");
+    tbody.innerHTML = "";
+    Object.keys(teams).forEach(team => {
+        tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
+    });
+});
+
+function declareWinner() {
+    const winner = document.getElementById('winnerSelect').value;
+    if (!winner) {
+        alert("Please select a team to declare as winner!");
+        return;
+    }
+    db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
+        .then(() => alert(`${winner} wins this mini-game! 🏆`))
+        .catch(error => console.error("Error updating winner:", error));
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📈 Comeback Kings</title>
+<link rel="stylesheet" href="gameshow.css">
+<style>
+.confetti {position: fixed; width: 10px; height: 10px; animation: confetti-fall 3s linear infinite; z-index: 9999;}
+@keyframes confetti-fall {0%{transform:translateY(-10%) rotate(0deg); opacity:1;} 100%{transform:translateY(110vh) rotate(720deg); opacity:0;}}
+.award-winner {font-size: 2em; font-weight: bold; color: #a30000;}
+.award-metric {font-size: 1.2em; margin-top: 10px; color: #333;}
+</style>
+</head>
+<body>
+<header class="awards-header">
+  <button class="back-btn" onclick="window.location.href='awards.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/><path d="M9 12h12"/></svg>
+  </button>
+  📈 Comeback Kings
+</header>
+<div class="container">
+  <h2>📈 Comeback Kings</h2>
+  <p>Biggest point recovery across the game!</p>
+  <div style="margin-top:30px;">
+    <div class="award-winner" id="winnerName">Loading...</div>
+    <div class="award-metric" id="winnerTeam"></div>
+    <div class="award-metric" id="pointsRecovered"></div>
+  </div>
+</div>
+<script>
+const mockData={winnerName:"Maya Lim", team:"Team 4", pointsRecovered:24};
+document.getElementById("winnerName").textContent=`🏆 ${mockData.winnerName}`;
+document.getElementById("winnerTeam").textContent=`Team: ${mockData.team}`;
+document.getElementById("pointsRecovered").textContent=`Points Recovered: ${mockData.pointsRecovered}`;
+for (let i=0;i<50;i++){let c=document.createElement('div');c.className='confetti';c.style.left=Math.random()*100+'vw';c.style.backgroundColor=`hsl(${Math.random()*360},70%,60%)`;c.style.animationDuration=(Math.random()*3+2)+'s';c.style.animationDelay=Math.random()*2+'s';document.body.appendChild(c);}
+</script>
+</body>
+</html>

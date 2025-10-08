@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>🎲 Game Show Player Selector</title>
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+.game-section { margin-bottom: 30px; display: none; }
+.game-section.active { display: block; }
+
+.result-table {
+    margin-top: 10px;
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    box-shadow: 0 0 15px rgba(0,0,0,0.25);
+    border-radius: 10px;
+    background-color: white;
+    font-size: 1.05em;
+}
+.result-table th {
+    background: linear-gradient(180deg, #c20000, #8b0000);
+    color: white;
+    padding: 10px 14px;
+    text-align: left;
+}
+.result-table td {
+    padding: 10px 14px;
+    vertical-align: top;
+    opacity: 0;
+    transform: translateY(5px);
+}
+.result-table tr:nth-child(even) td { background-color: #fff5f5; }
+.result-table tr:nth-child(odd) td { background-color: #ffffff; }
+.result-table .player-list div { margin-bottom: 3px; color: #222; }
+
+@keyframes fadeRowIn {
+    0% { opacity: 0; transform: translateY(5px);}
+    100% { opacity: 1; transform: translateY(0);}
+}
+
+button { margin: 5px; }
+.back-btn-small {
+    background: linear-gradient(180deg, #ff3b2e, #a30000);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.back-btn-small:hover { background: linear-gradient(180deg, #ff5555, #cc0000);}
+</style>
+</head>
+<body>
+
+<header>
+    <button class="back-btn" onclick="window.location.href='host-menu.html'" title="Back to Menu">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 18l-6-6 6-6"/>
+            <path d="M9 12h12"/>
+        </svg>
+    </button>
+    🎲 Game Show Player Selector
+</header>
+
+<div class="container">
+
+    <!-- Game 1 -->
+    <div id="game1" class="game-section active">
+        <h2>Game 1: 1 Player from Each Team</h2>
+        <button onclick="pickGame1()">Select Players</button>
+        <div id="game1TableArea"></div>
+        <button onclick="nextGame(2)">Next ➡</button>
+        <button onclick="resetAll()">🔄 Reset</button>
+    </div>
+
+    <!-- Game 2 -->
+    <div id="game2" class="game-section">
+        <h2>Game 2: 4 Players from Each Team</h2>
+        <button onclick="pickGame2()">Select Players</button>
+        <div id="game2TableArea"></div>
+
+        <!-- Round Selector for Game 2 -->
+        <div id="game2Rounds" style="margin-top:15px;">
+            <h3>Game 2 Rounds</h3>
+            <button onclick="selectRoundPlayers(2,1)">Round 1</button>
+            <button onclick="selectRoundPlayers(2,2)">Round 2</button>
+            <button onclick="selectRoundPlayers(2,3)">Round 3</button>
+            <button onclick="selectRoundPlayers(2,4)">Round 4</button>
+        </div>
+        <div id="game2-round-1"></div>
+        <div id="game2-round-2"></div>
+        <div id="game2-round-3"></div>
+        <div id="game2-round-4"></div>
+
+        <button onclick="nextGame(3)">Next ➡</button>
+        <button onclick="resetAll()">🔄 Reset</button>
+    </div>
+
+    <!-- Game 3 -->
+    <div id="game3" class="game-section">
+        <h2>Game 3: 4 Players from Each Team (Not in Game 2)</h2>
+        <button onclick="pickGame3()">Select Players</button>
+        <div id="game3TableArea"></div>
+
+        <!-- Round Selector for Game 3 -->
+        <div id="game3Rounds" style="margin-top:15px;">
+            <h3>Game 3 Rounds</h3>
+            <button onclick="selectRoundPlayers(3,1)">Round 1</button>
+            <button onclick="selectRoundPlayers(3,2)">Round 2</button>
+            <button onclick="selectRoundPlayers(3,3)">Round 3</button>
+            <button onclick="selectRoundPlayers(3,4)">Round 4</button>
+        </div>
+        <div id="game3-round-1"></div>
+        <div id="game3-round-2"></div>
+        <div id="game3-round-3"></div>
+        <div id="game3-round-4"></div>
+
+        <button onclick="nextGame(4)">Next ➡</button>
+        <button onclick="resetAll()">🔄 Reset</button>
+    </div>
+
+    <!-- Game 4 -->
+    <div id="game4" class="game-section">
+        <h2>Game 4: 1 Player from Each Team (Special Case for Team 5)</h2>
+        <button onclick="pickGame4()">Select Player</button>
+        <div id="game4TableArea"></div>
+        <br>
+        <button class="back-btn-small" onclick="nextGame(1)">⬅ Back to Game 1 Players</button>
+        <button onclick="resetAll()">🔄 Reset</button>
+    </div>
+</div>
+
+<script>
+// TEAM DATA
+const teams = {
+    "TEAM 1": ["Pooja Poornam Manivannan","Vishal Tiwari","Naufal Ilham","Cheryl Hernandez","Mason He","Kentaro Shiozaki","Jiho Kim","Hong Xiao","Percival Lawrence Ramos"],
+    "TEAM 2": ["Giritharan Aanantharaj","Elaine Ravelo","Esa Andikashwara","Fakrunizam Bin Mohd Zulkifeli","Feijun Zhao","Kazuki Fukazawa","Cast Ke","Leon Lei Xiao","Bimal Balakrishnan"],
+    "TEAM 3": ["Dianne Mae Czarina Mansos Condes","Ajay Singh","Jean Caviar","Chandan Sharma","Martin Macario","Angel Lu","Shunya Watanabe","James SIT","Manish Nagpal"],
+    "TEAM 4": ["Shamin Bin Ismail","Mia Gregorio","Avinash Gadi","Manjinder Singh Mankoo","Ken Cui","Ethan Hu","Ui Ishigami","Mark Rommel Manuntag","Jackael Lv"],
+    "TEAM 5": ["Srinivas Reddy Vengkatesan","Jumpol Pangthong","Chanaphol Wiboonsook","Thong Quoc Nguyen","Piyush Singh","Merorl Canindo","Nadya Lesnik","Koeun Chung"]
+};
+
+let game1Players = {};
+let game2Players = {};
+let game3Players = {};
+let game4Players = {};
+
+let game2RoundPools = {};
+let game3RoundPools = {};
+
+function randomPick(arr, count) {
+    const copy = [...arr];
+    const picked = [];
+    while (picked.length < count && copy.length > 0) {
+        const idx = Math.floor(Math.random() * copy.length);
+        picked.push(copy.splice(idx, 1)[0]);
+    }
+    return picked;
+}
+
+function renderTable(containerId, dataObj) {
+    const tableContainer = document.getElementById(containerId);
+    tableContainer.innerHTML = '<table class="result-table"><tr><th>Team</th><th>Players</th></tr>';
+    let delay = 0;
+    for (const team in dataObj) {
+        const row = document.createElement("tr");
+        const teamCell = document.createElement("td");
+        teamCell.textContent = team;
+        const playersCell = document.createElement("td");
+        const listContainer = document.createElement("div");
+        dataObj[team].forEach(name => {
+            const div = document.createElement("div");
+            div.textContent = name;
+            listContainer.appendChild(div);
+        });
+        playersCell.appendChild(listContainer);
+        row.appendChild(teamCell);
+        row.appendChild(playersCell);
+        tableContainer.querySelector("table").appendChild(row);
+        [teamCell, playersCell].forEach(cell => {
+            cell.style.animation = `fadeRowIn 0.5s ease forwards`;
+            cell.style.animationDelay = `${delay}s`;
+        });
+        delay += 0.2;
+    }
+}
+
+function pickGame1() {
+    game1Players = {};
+    for (const team in teams) {
+        game1Players[team] = randomPick(teams[team], 1);
+    }
+    renderTable("game1TableArea", game1Players);
+}
+
+function pickGame2() {
+    game2Players = {};
+    for (const team in teams) {
+        game2Players[team] = randomPick(teams[team], Math.min(4, teams[team].length));
+    }
+    renderTable("game2TableArea", game2Players);
+    game2RoundPools = JSON.parse(JSON.stringify(game2Players));
+}
+
+function pickGame3() {
+    game3Players = {};
+    for (const team in teams) {
+        const available = teams[team].filter(name => !(game2Players[team]?.includes(name)));
+        game3Players[team] = randomPick(available, Math.min(4, available.length));
+    }
+    renderTable("game3TableArea", game3Players);
+    game3RoundPools = JSON.parse(JSON.stringify(game3Players));
+}
+
+function pickGame4() {
+    game4Players = {};
+    for (const team in teams) {
+        let available = teams[team].filter(name =>
+            !(game2Players[team]?.includes(name)) &&
+            !(game3Players[team]?.includes(name))
+        );
+        if (team === "TEAM 5" && available.length === 0) {
+            available = teams[team].filter(name =>
+                !(game3Players[team]?.includes(name))
+            );
+        }
+        game4Players[team] = randomPick(available, Math.min(1, available.length));
+    }
+    renderTable("game4TableArea", game4Players);
+}
+
+function selectRoundPlayers(gameNum, roundNum) {
+    const pools = (gameNum === 2) ? game2RoundPools : game3RoundPools;
+    const roundResult = {};
+    for (const team in pools) {
+        if (pools[team].length > 0) {
+            const idx = Math.floor(Math.random() * pools[team].length);
+            const choice = pools[team].splice(idx, 1)[0];
+            roundResult[team] = [choice];
+        } else {
+            roundResult[team] = ["No players left"];
+        }
+    }
+    renderTable(`game${gameNum}-round-${roundNum}`, roundResult);
+}
+
+function nextGame(num) {
+    document.querySelectorAll(".game-section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(`game${num}`).classList.add("active");
+}
+
+function resetAll() {
+    game1Players = {};
+    game2Players = {};
+    game3Players = {};
+    game4Players = {};
+    game2RoundPools = {};
+    game3RoundPools = {};
+    document.querySelectorAll(".result-table").forEach(tbl => tbl.innerHTML = "");
+}
+</script>
+
+</body>
+</html>

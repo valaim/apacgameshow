@@ -1,0 +1,235 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Time Hop Trivia - Host View</title>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="gameshow.css">
+
+<style>
+    .wrong-btn { background: grey; }
+    .reset-btn { background: darkred; }
+    .reset-btn:hover { background: red; }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back-btn" onclick="window.location.href='host-menu.html'" title="Back">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+      <path d="M9 12h12"/>
+    </svg>
+  </button>
+  🕵 Time Hop Trivia - Host
+</header>
+
+<div class="container">
+    <h3>Question: <span id="questionNum">1</span></h3>
+    <div class="form-row">
+        <button onclick="startQuestion()">▶ Start Question</button>
+        <button onclick="endQuestion()">⏹ End Question</button>
+    </div>
+    <table>
+        <thead>
+            <tr><th>Buzz Order</th><th>Action</th></tr>
+        </thead>
+        <tbody id="buzzTable"></tbody>
+    </table>
+    <div class="form-row">
+        <button onclick="nextQuestion()">⏭ Next Question</button>
+        <button class="reset-btn" onclick="resetGame()">🔄 Reset Game</button>
+    </div>
+</div>
+
+<div class="container">
+    <h3>📊 Total Scores</h3>
+    <table>
+        <thead><tr><th>Team</th><th>Score</th></tr></thead>
+        <tbody id="scoreTable"></tbody>
+    </table>
+</div>
+
+<div class="container">
+  <div class="winner-control">
+    <label for="winnerSelect">Declare Mini‑Game Winner:</label>
+    <select id="winnerSelect">
+      <option value="">-- Select Team --</option>
+      <option value="Team 1">Team 1</option>
+      <option value="Team 2">Team 2</option>
+      <option value="Team 3">Team 3</option>
+      <option value="Team 4">Team 4</option>
+      <option value="Team 5">Team 5</option>
+    </select>
+    <button onclick="declareWinner()">✅ Set Winner</button>
+  </div>
+</div>
+
+<script>
+/* Firebase Config */
+const firebaseConfig = {
+    apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
+    authDomain: "apacgameshow-f8d5d.firebaseapp.com",
+    databaseURL: "https://apacgameshow-f8d5d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "apacgameshow-f8d5d",
+    storageBucket: "apacgameshow-f8d5d.firebasestorage.app",
+    messagingSenderId: "572761881903",
+    appId: "1:572761881903:web:3caef7b2e394a9d430f5da"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+/* ===== Buzz Order Table ===== */
+db.ref("timeHopTrivia/buzzOrder").on("value", snap => {
+    const order = snap.val() || [];
+    const tbody = document.getElementById("buzzTable");
+    tbody.innerHTML = "";
+    order.forEach(team => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${team}</td>
+                        <td>
+                            <button onclick="awardPoints('${team}')">✅ Correct</button>
+                            <button class="wrong-btn" onclick="markWrong('${team}')">❌ Wrong</button>
+                        </td>`;
+        tbody.appendChild(tr);
+    });
+});
+
+/* ===== Question Number ===== */
+db.ref("timeHopTrivia/currentQuestion").on("value", snap => {
+    document.getElementById("questionNum").innerText = snap.val() || 1;
+});
+
+/* ===== Functions ===== */
+function startQuestion() {
+    const currentTime = Date.now();
+    db.ref("timeHopTrivia").update({
+        buzzOrder: [],
+        wrongTeams: [],
+        currentBuzz: null,
+        questionActive: true,
+        questionStartTime: currentTime
+    });
+    console.log("Question started at:", currentTime);
+}
+
+function endQuestion() {
+    db.ref("timeHopTrivia/questionActive").set(false);
+    console.log("Question ended - Buzzers OFF");
+}
+
+function nextQuestion() {
+    db.ref("timeHopTrivia/currentQuestion").transaction(q => (q || 1) + 1);
+    db.ref("timeHopTrivia").update({
+        buzzOrder: [],
+        wrongTeams: [],
+        currentBuzz: null,
+        questionActive: false,
+        questionStartTime: null
+    });
+    console.log("Prepared next question - Buzzers still OFF");
+}
+
+function awardPoints(team) {
+    db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3);
+    alert(`${team} gets 3 points!`);
+}
+
+function markWrong(team) {
+    db.ref("timeHopTrivia/buzzOrder").once("value").then(bSnap => {
+        let order = bSnap.val() || [];
+        order = order.filter(t => t !== team);
+        db.ref("timeHopTrivia/buzzOrder").set(order);
+
+        // Add wrong team
+        db.ref("timeHopTrivia/wrongTeams").once("value").then(async wSnap => {
+            let wrongTeams = wSnap.val() || [];
+            if (!wrongTeams.includes(team)) wrongTeams.push(team);
+            await db.ref("timeHopTrivia/wrongTeams").set(wrongTeams);
+
+            // Check all-wrong condition
+            const teamsSnap = await db.ref("teams").once("value");
+            const allTeams = Object.keys(teamsSnap.val() || {});
+            const allBuzzed = [...new Set([...order, ...wrongTeams])];
+            const allWrong = allBuzzed.length > 0 && wrongTeams.length >= allBuzzed.length;
+
+            if (allWrong && allBuzzed.length < allTeams.length) {
+                // not all teams have played yet → still possible others buzz
+                console.log("Some teams haven't buzzed yet — waiting");
+            }
+            if (allWrong) {
+                alert("❌ All teams were wrong — buzzers re-opened!");
+                await db.ref("timeHopTrivia/wrongTeams").set([]);
+            }
+        });
+    });
+
+    // Log wrong buzz
+    db.ref("players").once("value").then(pSnap => {
+        let playerNameFound = "Unknown";
+        const players = pSnap.val() || {};
+        Object.values(players).forEach(p => {
+            if (p.team === team) playerNameFound = p.name;
+        });
+
+        db.ref("timeHopTrivia/questionStartTime").once("value").then(qSnap => {
+            const qStart = qSnap.val() || Date.now();
+            const reactionSecs = (Date.now() - qStart) / 1000;
+
+            db.ref("gameHistory").push({
+                game: "timeHop",
+                event: "buzz",
+                player: playerNameFound,
+                team: team,
+                reactionTime: reactionSecs,
+                correct: false,
+                timestamp: Date.now()
+            });
+        });
+    });
+}
+
+function resetGame() {
+    if (confirm("Reset Time Hop Trivia? This clears all scores & buzz orders.")) {
+        db.ref("timeHopTrivia").set({
+            currentQuestion: 1,
+            buzzOrder: [],
+            wrongTeams: [],
+            currentBuzz: null,
+            questionActive: false,
+            questionStartTime: null
+        });
+        db.ref("teams").set({});
+        db.ref("resetFlags/gameReset").set(Date.now());
+    }
+}
+
+/* ===== Live Scores ===== */
+db.ref("teams").on("value", snap => {
+    const teams = snap.val() || {};
+    const tbody = document.getElementById("scoreTable");
+    tbody.innerHTML = "";
+    Object.keys(teams).forEach(team => {
+        tbody.innerHTML += `<tr><td>${team}</td><td>${teams[team].score || 0}</td></tr>`;
+    });
+});
+
+function declareWinner() {
+  const winner = document.getElementById('winnerSelect').value;
+  if (!winner) {
+    alert("Please select a team to declare as winner!");
+    return;
+  }
+  db.ref('wins/' + winner).transaction(currentWins => (currentWins || 0) + 1)
+    .then(() => {
+      alert(`${winner} wins this mini-game! 🏆`);
+    })
+    .catch(error => {
+      console.error("Error updating winner:", error);
+    });
+}
+</script>
+</body>
+</html>
