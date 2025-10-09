@@ -97,10 +97,11 @@ const answers = {
       ]
     }
   },
-  // Question 2 – grouped-shared (Product Models)
-  2: { type: "grouped-shared", /* ... unchanged ... */ },
 
-  // ✅ Question 3 – shared (Coca-Cola Brands Active in APAC)
+  // Question 2 – grouped-shared (Product Models)
+  2: { type: "grouped-shared", /* keep your original question 2 answers here */ },
+
+  // ✅ Question 3 – shared (Brands)
   3: {
     type: "shared",
     answers: [
@@ -128,7 +129,7 @@ const answers = {
   },
 
   // Question 4 – grouped-shared (OUs)
-  4: { type: "grouped-shared", /* ... unchanged ... */ }
+  4: { type: "grouped-shared", /* keep your original question 4 answers here */ }
 };
 
 // ==================== 🔥 FIREBASE + GAME LOGIC ====================
@@ -144,7 +145,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Show buzz order table with wrong-team highlight
+// Show buzz order table
 db.ref("hotSeat").on("value", snap => {
     const data = snap.val() || {};
     const order = data.buzzOrder || [];
@@ -216,18 +217,22 @@ function resetAnswerPanel() {
 }
 
 function startRound() {
-    const currentTime = Date.now();
     db.ref("hotSeat").update({
         buzzOrder: [],
         wrongTeams: [],
         currentBuzz: null,
         roundActive: true,
-        roundStartTime: currentTime
+        roundStartTime: Date.now()
     });
 }
 
 function endRound() {
-    db.ref("hotSeat/roundActive").set(false);
+    db.ref("hotSeat").update({
+        roundActive: false,
+        currentBuzz: null,
+        buzzOrder: [],
+        wrongTeams: []
+    });
 }
 
 function nextRound() {
@@ -246,19 +251,23 @@ function awardPoints(team) {
     alert(`${team} gets 3 points!`);
 }
 
+// ✅ Updated Wrong Button Logic
 function markWrong(team) {
     db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
-        const order = bSnap.val() || [];
-        db.ref("hotSeat/wrongTeams").once("value").then(async wSnap => {
-            let wrongTeams = wSnap.val() || [];
-            if (!wrongTeams.includes(team)) wrongTeams.push(team);
-            await db.ref("hotSeat/wrongTeams").set(wrongTeams);
+        let order = bSnap.val() || [];
+        order = order.filter(t => t !== team);
+        db.ref("hotSeat/buzzOrder").set(order);
 
-            const allBuzzed = [...new Set([...order, ...wrongTeams])];
-            const allWrong = allBuzzed.length > 0 && wrongTeams.length >= allBuzzed.length;
-            if (allWrong) {
+        db.ref("hotSeat/wrongTeams").once("value").then(wSnap => {
+            let wrongTeams = wSnap.val() || [];
+            if (!wrongTeams.includes(team)) {
+                wrongTeams.push(team);
+            }
+            db.ref("hotSeat/wrongTeams").set(wrongTeams);
+
+            if (order.length === 0) {
                 alert("❌ All teams were wrong — buzzers reopened!");
-                await db.ref("hotSeat/wrongTeams").set([]);
+                db.ref("hotSeat/wrongTeams").set([]);
             }
         });
     });
