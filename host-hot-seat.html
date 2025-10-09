@@ -7,7 +7,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="gameshow.css">
-
 <style>
     .wrong-btn { background: grey; }
     .reset-btn { background: darkred; }
@@ -34,7 +33,7 @@
       <button onclick="endRound()">⏹ End Round</button>
     </div>
     <table>
-        <thead><tr><th>Buzz Order</th><th>Action</th></tr></thead>
+        <thead><tr><th>Buzz Order</th><th>Countdown / Action</th></tr></thead>
         <tbody id="buzzTable"></tbody>
     </table>
     <div class="form-row">
@@ -76,32 +75,17 @@
 <script>
 // ==================== 📋 QUESTIONS & ANSWERS ====================
 const answers = {
-  // Question 1 – grouped-shared (TSMs)
   1: {
     type: "grouped-shared",
     answers: {
-      "Group 1": [
-        "Manish Nagpal","Kang Min Kim","Jackael Lv","Koeun Chung","Bimal Balakrishnan"
-      ],
-      "Group 2": [
-        "Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Kang Min Kim"
-      ],
-      "Group 3": [
-        "Kang Min Kim","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Bimal Balakrishnan"
-      ],
-      "Group 4": [
-        "Manish Nagpal","Kang Min Kim","Koeun Chung","Bimal Balakrishnan","Percival Lawrence Ramos"
-      ],
-      "Group 5": [
-        "Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Kang Min Kim","Bimal Balakrishnan"
-      ]
+      "Group 1": ["Manish Nagpal","Kang Min Kim","Jackael Lv","Koeun Chung","Bimal Balakrishnan"],
+      "Group 2": ["Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Kang Min Kim"],
+      "Group 3": ["Kang Min Kim","Jackael Lv","Percival Lawrence Ramos","Koeun Chung","Bimal Balakrishnan"],
+      "Group 4": ["Manish Nagpal","Kang Min Kim","Koeun Chung","Bimal Balakrishnan","Percival Lawrence Ramos"],
+      "Group 5": ["Manish Nagpal","Jackael Lv","Percival Lawrence Ramos","Kang Min Kim","Bimal Balakrishnan"]
     }
   },
-
-  // Question 2 – grouped-shared (Product Models)
-  2: { type: "grouped-shared", /* keep your original question 2 answers here */ },
-
-  // ✅ Question 3 – shared (Brands)
+  2: { type: "grouped-shared", /* your original Q2 answers */ },
   3: {
     type: "shared",
     answers: [
@@ -127,12 +111,10 @@ const answers = {
       "vitaminwater"
     ]
   },
-
-  // Question 4 – grouped-shared (OUs)
-  4: { type: "grouped-shared", /* keep your original question 4 answers here */ }
+  4: { type: "grouped-shared", /* your original Q4 answers */ }
 };
 
-// ==================== 🔥 FIREBASE + GAME LOGIC ====================
+// ==================== FIREBASE CONFIG ====================
 const firebaseConfig = {
   apiKey: "AIzaSyCqHMhVHAeOn3A8MMcvjVT_6h14jbZhzW0",
   authDomain: "apacgameshow-f8d5d.firebaseapp.com",
@@ -145,35 +127,55 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// Show buzz order table
-db.ref("hotSeat").on("value", snap => {
-    const data = snap.val() || {};
+// ==================== Render Buzz Table with Countdown ====================
+function renderBuzzTable(data) {
     const order = data.buzzOrder || [];
     const wrongTeams = data.wrongTeams || [];
+    const buzzTimes = data.buzzTimes || {};
+
     const tbody = document.getElementById("buzzTable");
     tbody.innerHTML = "";
     order.forEach(team => {
         const className = wrongTeams.includes(team) ? "wrong-team" : "";
+        let countdownDisplay = "--";
+        if (buzzTimes[team]) {
+            const elapsed = Math.floor((Date.now() - buzzTimes[team]) / 1000);
+            const remaining = 5 - elapsed;
+            countdownDisplay = remaining > 0 ? `${remaining}s` : "0s";
+        }
         const tr = document.createElement("tr");
-        tr.innerHTML = `<td class="${className}">${team}</td>
-                        <td>
-                            <button onclick="awardPoints('${team}')">✅ Correct</button>
-                            <button class="wrong-btn" onclick="markWrong('${team}')">❌ Wrong</button>
-                        </td>`;
+        tr.innerHTML = `
+            <td class="${className}">${team}</td>
+            <td>
+                ⏳ ${countdownDisplay}
+                <button onclick="awardPoints('${team}')">✅ Correct</button>
+                <button class="wrong-btn" onclick="markWrong('${team}')">❌ Wrong</button>
+            </td>
+        `;
         tbody.appendChild(tr);
     });
+}
+
+// Listen to hotSeat changes
+db.ref("hotSeat").on("value", snap => {
+    renderBuzzTable(snap.val() || {});
 });
 
-let answersVisible = false;
+// Auto-refresh countdown every second
+setInterval(() => {
+    db.ref("hotSeat").once("value").then(snap => {
+        renderBuzzTable(snap.val() || {});
+    });
+}, 1000);
 
-// Round tracking
+// ==================== ROUND TRACKING ====================
 db.ref("hotSeat/currentRound").on("value", snap => {
-    const round = snap.val() || 1;
-    document.getElementById("roundNum").innerText = round;
+    document.getElementById("roundNum").innerText = snap.val() || 1;
     resetAnswerPanel();
 });
 
-// CLICK TO REVEAL LOGIC
+// ==================== CLICK TO REVEAL ANSWERS ====================
+let answersVisible = false;
 document.getElementById("answerDisplay").addEventListener("click", () => {
     const round = parseInt(document.getElementById("roundNum").innerText, 10);
     const answerData = answers[round];
@@ -216,9 +218,11 @@ function resetAnswerPanel() {
     answersVisible = false;
 }
 
+// ==================== ROUND CONTROLS ====================
 function startRound() {
     db.ref("hotSeat").update({
         buzzOrder: [],
+        buzzTimes: {},
         wrongTeams: [],
         currentBuzz: null,
         roundActive: true,
@@ -231,6 +235,7 @@ function endRound() {
         roundActive: false,
         currentBuzz: null,
         buzzOrder: [],
+        buzzTimes: {},
         wrongTeams: []
     });
 }
@@ -239,6 +244,7 @@ function nextRound() {
     db.ref("hotSeat/currentRound").transaction(r => (r || 1) + 1);
     db.ref("hotSeat").update({
         buzzOrder: [],
+        buzzTimes: {},
         wrongTeams: [],
         currentBuzz: null,
         roundActive: false,
@@ -246,12 +252,12 @@ function nextRound() {
     });
 }
 
+// ==================== CORRECT / WRONG ====================
 function awardPoints(team) {
     db.ref(`teams/${team}/score`).transaction(score => (score || 0) + 3);
     alert(`${team} gets 3 points!`);
 }
 
-// ✅ Updated Wrong Button Logic
 function markWrong(team) {
     db.ref("hotSeat/buzzOrder").once("value").then(bSnap => {
         let order = bSnap.val() || [];
@@ -260,10 +266,11 @@ function markWrong(team) {
 
         db.ref("hotSeat/wrongTeams").once("value").then(wSnap => {
             let wrongTeams = wSnap.val() || [];
-            if (!wrongTeams.includes(team)) {
-                wrongTeams.push(team);
-            }
+            if (!wrongTeams.includes(team)) wrongTeams.push(team);
             db.ref("hotSeat/wrongTeams").set(wrongTeams);
+
+            // Remove buzzTime entry so timer stops
+            db.ref(`hotSeat/buzzTimes/${team}`).remove();
 
             if (order.length === 0) {
                 alert("❌ All teams were wrong — buzzers reopened!");
@@ -273,11 +280,13 @@ function markWrong(team) {
     });
 }
 
+// ==================== RESET GAME ====================
 function resetGame() {
     if (confirm("Reset Hot Seat game? This clears all scores & buzz orders.")) {
         db.ref("hotSeat").set({
             currentRound: 1,
             buzzOrder: [],
+            buzzTimes: {},
             wrongTeams: [],
             currentBuzz: null,
             roundActive: false,
@@ -288,6 +297,7 @@ function resetGame() {
     }
 }
 
+// ==================== SCORE TABLE ====================
 db.ref("teams").on("value", snap => {
     const teams = snap.val() || {};
     const tbody = document.getElementById("scoreTable");
@@ -297,6 +307,7 @@ db.ref("teams").on("value", snap => {
     });
 });
 
+// ==================== WINNER ====================
 function declareWinner() {
     const winner = document.getElementById('winnerSelect').value;
     if (!winner) {

@@ -12,54 +12,28 @@
 .gameplaySection { display: none; }
 #playerInfo { font-weight: bold; margin-bottom: 10px; }
 .switch-btn { background: #f44336; color: white; padding: 5px 10px; border: none; cursor: pointer; border-radius: 5px; margin-top: 8px; }
-
-#countdownWrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-  margin-top: 8px;
-}
+#countdownWrapper { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 8px; }
 #countdownDisplay {
   font-family: 'Luckiest Guy', cursive;
   font-size: 1.6em;
   font-weight: bold;
   color: #fff;
   background: radial-gradient(circle at center, #ff3b2e, #a30000);
-  width: 50px;
-  height: 50px;
-  line-height: 50px;
-  border-radius: 50%;
-  text-align: center;
+  width: 50px; height: 50px; line-height: 50px;
+  border-radius: 50%; text-align: center;
   box-shadow: 0 0 8px rgba(255,0,0,0.6);
   animation: pulseCountdown 1s infinite;
 }
-@keyframes pulseCountdown {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
+@keyframes pulseCountdown { 0%{transform:scale(1);}50%{transform:scale(1.05);}100%{transform:scale(1);} }
 #countdownDisplay.low-time {
   background: radial-gradient(circle at center, #ff0000, #800000);
-  color: #FFD700;
-  animation: pulseCountdownFast 0.5s infinite;
+  color: #FFD700; animation: pulseCountdownFast 0.5s infinite;
 }
-@keyframes pulseCountdownFast {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
+@keyframes pulseCountdownFast { 0%{transform:scale(1);}50%{transform:scale(1.08);}100%{transform:scale(1);} }
 #countdownDisplay.stopped {
-  animation: none !important;
-  background: grey;
-  color: white;
-  box-shadow: none;
+  animation: none !important; background: grey; color: white; box-shadow: none;
 }
-.countdownLabel {
-  font-size: 0.9em;
-  font-weight: bold;
-  color: #a30000;
-}
+.countdownLabel { font-size: 0.9em; font-weight: bold; color: #a30000; }
 </style>
 </head>
 <body>
@@ -85,8 +59,7 @@
     <option value="Team 3">Team 3</option>
     <option value="Team 4">Team 4</option>
     <option value="Team 5">Team 5</option>
-  </select>
-  <br><br>
+  </select><br><br>
   <button onclick="registerInline()">✅ Join Game</button>
 </div>
 
@@ -266,7 +239,7 @@ function initGameListeners() {
   });
 }
 
-// ✅ Fixed buzz() using Firebase transaction for atomic multi-press handling
+// ✅ Buzz and store buzzTimes so host sees countdown
 function buzz() {
   db.ref("hotSeat/wrongTeams").once("value").then(wSnap => {
     const wrongTeams = wSnap.val() || [];
@@ -275,13 +248,11 @@ function buzz() {
       const allAnswered = [...new Set([...buzzOrder, ...wrongTeams])];
       const allWrong = allAnswered.length > 0 && wrongTeams.length >= allAnswered.length;
 
-      // Block if team already wrong and buzzers not reopened
       if (wrongTeams.includes(selectedTeam) && !allWrong) {
         alert("⛔ Your team already answered wrong this round.");
-        return buzzOrder; // no changes
+        return buzzOrder;
       }
 
-      // Add team if they haven't buzzed in current buzzer open cycle
       if (!buzzOrder.includes(selectedTeam)) {
         buzzOrder.push(selectedTeam);
 
@@ -303,6 +274,9 @@ function buzz() {
           startTime: Date.now(),
           duration: 5
         });
+
+        // ✅ Store buzz time for host countdown
+        db.ref(`hotSeat/buzzTimes/${selectedTeam}`).set(Date.now());
 
         startSharedCountdown(Date.now(), 5);
       }
